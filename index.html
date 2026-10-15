@@ -131,7 +131,7 @@ input,select,textarea{background:var(--panel);border:1px solid var(--line);borde
 <section class="legal" id="privacy"><nav><a href="#">← PDF Flip</a> · <a href="terms.html">Terms</a></nav><h1>PDF Flip — Privacy Policy</h1><p>Effective date: 15 October 2026</p>
 <p>PDF Flip is a PDF flipbook reader maintained by the site owner. It supports local PDFs, reading progress, page links, attached audio and optional Google Drive storage.</p>
 <h2>Google access and purpose</h2><p>When you sign in, the app uses your Google account identifier, name, email and profile information to identify your account and separate its device storage. It requests permission to create and access app-created Drive files (drive.file) to save your personal PDFs, attached audio, folder names, links and reading progress. It creates a “DCD Book Library” folder and a library.json file in your Drive. This data is used to provide the reader and library features you choose.</p>
-<p>Loading the optional shared default library asks separately for broader read-only Drive access (drive.readonly), because the shared folder was not created by the app. With that permission, the app reads that configured shared folder and your app library; its code does not scan your unrelated Drive files. Google may require additional consent and verification for this optional permission.</p>
+<p>Signing in to load the shared default library asks for read-only Drive access (drive.readonly), because the shared folder was not created by the app. With that permission, the app reads that configured shared folder and your app library; its code does not scan your unrelated Drive files. Google may require additional consent and verification for this optional permission.</p>
 <h2>Storage and sharing</h2><p>PDFs, audio, account-specific library metadata and reading progress are cached in IndexedDB on your device. Theme, autosave preferences and an optional public Client ID override are stored in browser local storage. Guest storage and each Google account use separate databases. Cached account data remains after sign-out; someone who can access your browser storage may be able to read it. Google access tokens are held in page memory, not stored by this app in browser storage.</p>
 <p>Private uploads and library metadata are sent directly from your browser to Google Drive. The app does not send those files to an app-owner server or make them public. File visibility follows the permissions in your Drive. Google handles authentication and storage under its <a href="https://policies.google.com/privacy">Privacy Policy</a>. Cloudflare hosts this site and CDN providers deliver the PDF reader code; providers may process IP addresses and technical request information. The app includes no advertising or separate analytics tracker.</p>
 <h2>Limited Use</h2><p>PDF Flip’s use of information received from Google APIs adheres to the <a href="https://developers.google.com/terms/api-services-user-data-policy">Google API Services User Data Policy</a>, including its Limited Use requirements. Google data is used only for these visible library features. It is not sold, used for advertising or used to train AI models.</p>
@@ -155,7 +155,7 @@ function openBookDB(scope){return new Promise((res,rej)=>{const r=indexedDB.open
 let DB=openBookDB('guest');
 const tx=async(s,m,f)=>{const d=await DB;return new Promise((res,rej)=>{const t=d.transaction(s,m),q=f(t.objectStore(s));t.oncomplete=()=>res(q&&q.result);t.onerror=()=>rej(t.error)})};
 const dbGet=(s,k)=>tx(s,'readonly',o=>o.get(k)),dbPut=(s,k,v)=>tx(s,'readwrite',o=>o.put(v,k)),dbDel=(s,k)=>tx(s,'readwrite',o=>o.delete(k)),dbAll=s=>tx(s,'readonly',o=>o.getAll());
-let books=[],folders=[],dropped=[];
+let books=[],folders=[],dropped=[],hiddenDefaultFolders=[];
 const saveBook=async b=>{try{await dbPut('books',b.id,b);scheduleCloud();}catch(error){toast('Device save failed: '+error.message);}};
 const saveFolders=async()=>{try{await dbPut('meta','folders',folders);scheduleCloud();}catch(error){toast('Device save failed: '+error.message);}};
 const toast=m=>{const t=document.createElement('div');t.className='toast';t.textContent=m;document.body.append(t);setTimeout(()=>t.remove(),2200)};
@@ -168,14 +168,14 @@ function renderLib(){
   sel.innerHTML='<option value="">Unfiled</option>'+folders.filter(f=>!f.startsWith('Default library')).map(f=>`<option>${esc(f)}</option>`).join('');sel.value=folders.includes(cur)?cur:'';
   const groups=[...folders,''].map(f=>({f,items:vis().filter(b=>(b.folder||'')===f)})).filter(g=>g.f||g.items.length);
   const body=$('#libbody');
-  if(!vis().length&&!folders.length){body.innerHTML='<div class="empty-msg">No books yet.<br>Import a PDF to start, or sign in with Google to load your own library.<br>The shared default library is available in Settings.</div>';return}
+  if(!vis().length&&!folders.length){body.innerHTML='<div class="empty-msg">No books yet.<br>Import a PDF to start, or sign in with Google to load your own library.<br>The shared default library loads when you sign in.</div>';return}
   body.innerHTML=groups.map(g=>`<div class="fh">📁 ${g.f?esc(g.f):'Unfiled'} <small>${g.items.length}</small><span class="sp"></span>${g.f?`<button data-df="${esc(g.f)}" title="Delete folder">✕</button>`:''}</div><div class="grid">${g.items.map(b=>`<div class="card" data-id="${b.id}"><button class="more" data-e="${b.id}">⋯</button><div class="cover" style="aspect-ratio:${b.aspect}"><img src="${b.thumb}"><div class="prog"><i style="width:${Math.round(((b.last||1)/b.pages)*100)}%"></i></div></div><div class="t">${esc(b.name)}<small>p.${b.last||1} / ${b.pages}</small></div></div>`).join('')||'<span style="color:var(--muted)">Empty folder</span>'}</div>`).join('');
 }
 $('#libbody').onclick=e=>{
   const ed=e.target.closest('[data-e]'),df=e.target.closest('[data-df]'),c=e.target.closest('.card');
   if(accountLock())return toast('Wait for sync to finish.');
   if(ed){editBook(books.find(b=>b.id===ed.dataset.e));return}
-  if(df){folders=folders.filter(f=>f!==df.dataset.df);books.forEach(b=>{if(b.folder===df.dataset.df){b.folder='';saveBook(b)}});saveFolders();renderLib();return}
+  if(df){if(df.dataset.df===DEFAULT_NAME||df.dataset.df.startsWith(DEFAULT_NAME+' / ')){hiddenDefaultFolders=[...new Set([...hiddenDefaultFolders,df.dataset.df])];dbPut('meta','hiddenDefaultFolders',hiddenDefaultFolders);}folders=folders.filter(f=>f!==df.dataset.df);books.forEach(b=>{if(b.folder===df.dataset.df){b.folder='';saveBook(b)}});saveFolders();renderLib();return}
   if(c)openBook(c.dataset.id);
 };
 function editBook(b){
@@ -183,7 +183,7 @@ function editBook(b){
   $('#ec',m).onclick=()=>m.remove();
   $('#es',m).onclick=()=>{b.name=$('#en',m).value.trim()||b.name;b.folder=$('#ef',m).value;saveBook(b);renderLib();m.remove()};
   let sure=0;$('#ed',m).onclick=async e=>{if(!sure){sure=1;e.target.textContent='Really delete?';return}
-    if(b.driveId){dropped.push(b.driveId);dbPut('meta','dropped',dropped)}books=books.filter(x=>x!==b);await dbDel('books',b.id);await dbDel('files',b.id);for(const k of Object.values(b.links||{}))if(k.audio)dbDel('audio',k.audio);renderLib();scheduleCloud();m.remove()};
+    if(b.driveId){dropped=[...new Set([...dropped,b.driveId])];await dbPut('meta','dropped',dropped)}books=books.filter(x=>x!==b);await dbDel('books',b.id);await dbDel('files',b.id);for(const k of Object.values(b.links||{}))if(k.audio)dbDel('audio',k.audio);renderLib();scheduleCloud();m.remove()};
 }
 $('#nf').onclick=()=>{if(accountLock())return;
   const m=modal('<h3>New folder</h3><input id="fn" type="text" placeholder="Folder name" autocomplete="off" autocapitalize="sentences" spellcheck="false" style="-webkit-user-select:text;user-select:text"><div class="row"><button id="fc">Cancel</button><button class="pri" id="fo">Create</button></div>');
@@ -253,7 +253,7 @@ function gAuth(interactive=true,extra=false,force=false){return new Promise((res
  try{google.accounts.oauth2.initTokenClient({client_id:cid(),scope:SCOPE+(extra?' '+READ_SCOPE:''),include_granted_scopes:true,
  callback:r=>{finish();if(r.error)return rej(new Error(r.error_description||r.error));gtok=r.access_token;connectionFailed=false;gexp=Date.now()+(Number(r.expires_in)-60)*1000;readAllowed=google.accounts.oauth2.hasGrantedAllScopes(r,READ_SCOPE);res(gtok);},
  error_callback:e=>{finish();rej(new Error(e.type==='popup_closed'?'Sign-in cancelled.':e.type==='popup_failed_to_open'?'Allow Google popups and try again.':'Google sign-in failed.'));}
- }).requestAccessToken({prompt:force?'select_account':interactive?'':'none'});}catch(error){finish();rej(error);}
+ }).requestAccessToken({prompt:force?'select_account':interactive?'':'none',...(!force&&user?.email?{hint:user.email}:{})});}catch(error){finish();rej(error);}
 });}
 async function gj(url,o={}){
  if(!gtok||Date.now()>=gexp)throw new Error('Google connection expired. Click Sign in or Sync to reconnect. Your device copy is kept.');
@@ -263,7 +263,7 @@ async function gj(url,o={}){
 }
 async function loadDeviceLibrary(scope){
  const old=await DB;old.close();DB=openBookDB(scope);await DB;
- books=await dbAll('books');folders=(await dbGet('meta','folders'))||[];dropped=(await dbGet('meta','dropped'))||[];cloudVersion=(await dbGet('meta','cloudVersion'))||null;
+ books=await dbAll('books');folders=(await dbGet('meta','folders'))||[];dropped=(await dbGet('meta','dropped'))||[];cloudVersion=(await dbGet('meta','cloudVersion'))||null;hiddenDefaultFolders=(await dbGet('meta','hiddenDefaultFolders'))||[];
  renderLib();
 }
 async function signIn(interactive=true,extra=false,force=false){
@@ -273,12 +273,12 @@ async function signIn(interactive=true,extra=false,force=false){
  let next;try{next=await(await gj('https://www.googleapis.com/oauth2/v3/userinfo')).json();if(!next.sub||!next.email)throw new Error('Google did not identify the account.');}
  catch(error){gtok='';gexp=0;user=null;myRoot='';clearTimeout(cloudTimer);await loadDeviceLibrary('guest');acct();throw error;}
  if(previous?.sub!==next.sub){clearTimeout(cloudTimer);document.querySelectorAll('.mdl').forEach(m=>m.remove());user=next;myRoot='';await loadDeviceLibrary(next.sub);}else user=next;
- status('Connected: '+user.email);acct();
+ gset('pdf-flip-account',JSON.stringify({sub:user.sub,email:user.email,name:user.name||'',given_name:user.given_name||''}));status('Connected: '+user.email);acct();
 }
 async function signOut(){
  if(accountLock())return toast('Wait for the current sync to finish.');
  if(B)closeBook();clearTimeout(cloudTimer);document.querySelectorAll('.mdl').forEach(m=>m.remove());
- accountBusy=true;acct();try{gtok='';gexp=0;user=null;myRoot='';readAllowed=false;await loadDeviceLibrary('guest');status('Signed out — Drive files and device copies kept');}catch(error){toast(error.message);}finally{accountBusy=false;acct();}
+ accountBusy=true;acct();try{gset('pdf-flip-account','');gtok='';gexp=0;user=null;myRoot='';readAllowed=false;await loadDeviceLibrary('guest');status('Signed out — Drive files and device copies kept');}catch(error){toast(error.message);}finally{accountBusy=false;acct();}
 }
 const q1=t=>String(t).replace(/\\/g,'\\\\').replace(/'/g,"\\'");
 async function listFiles(query,fields='id,name,mimeType,modifiedTime,appProperties'){
@@ -325,7 +325,7 @@ async function saveLibrary(){
  }
  // Detect edits made while PDFs and audio were uploading; save those in the next pass.
  const before=JSON.stringify(vis());
- const payload={version:1,folders:[...folders],dropped:[...dropped],books:snapshot.map(b=>{const {thumb,...record}=b;return record;})};
+ const payload={version:1,folders:[...folders],dropped:[...dropped],hiddenDefaultFolders:[...hiddenDefaultFolders],books:snapshot.map(b=>{const {thumb,...record}=b;return record;})};
  const saved=await putFile({name:'library.json',...(!existing?{parents:[folder]}:{})},new Blob([JSON.stringify(payload)],{type:'application/json'}),existing?.id);
  cloudVersion=saved;await dbPut('meta','cloudVersion',saved);status('Saved to your Google Drive');
  if(before!==JSON.stringify(vis())||JSON.stringify(snapshot.map(b=>[b.id,b.name,b.folder,b.last,b.links]))!==JSON.stringify(vis().map(b=>[b.id,b.name,b.folder,b.last,b.links])))setTimeout(scheduleCloud,0);
@@ -335,7 +335,7 @@ async function saveLibrary(){
 function validateManifest(data){
  if(!data||data.version!==1||!Array.isArray(data.books)||!Array.isArray(data.folders)||data.books.length>2000)throw new Error('Invalid PDF Flip library file.');
  const ids=new Set();for(const b of data.books){if(!b||typeof b.id!=='string'||!/^[\w-]+$/.test(b.id)||ids.has(b.id)||typeof b.name!=='string'||typeof b.driveId!=='string'||!/^[\w-]+$/.test(b.driveId))throw new Error('Invalid book entry in Drive.');ids.add(b.id);if(b.links&&typeof b.links!=='object')throw new Error('Invalid page links.');for(const [page,link] of Object.entries(b.links||{})){if(!/^\d+$/.test(page)||!link||typeof link!=='object'||(link.driveAudioId&&!/^[\w-]+$/.test(link.driveAudioId))||(link.audio&&typeof link.audio!=='string'))throw new Error('Invalid audio or page link.');if(link.to&&(!Number.isInteger(link.to)||link.to<1))throw new Error('Invalid page destination.');}}
- if(data.folders.some(f=>typeof f!=='string')||(data.dropped&&!Array.isArray(data.dropped)))throw new Error('Invalid folder data.');return data;
+ if(data.folders.some(f=>typeof f!=='string')||(data.dropped&&(!Array.isArray(data.dropped)||data.dropped.some(x=>typeof x!=='string')))||(data.hiddenDefaultFolders&&(!Array.isArray(data.hiddenDefaultFolders)||data.hiddenDefaultFolders.some(x=>typeof x!=='string'))))throw new Error('Invalid folder data.');return data;
 }
 async function downloadBook(file){const url=file.mimeType?.startsWith('application/vnd.google-apps.')?`${GA}/${file.id}/export?mimeType=application/pdf`:`${GA}/${file.id}?alt=media&supportsAllDrives=true`;return new Blob([await(await gj(url)).blob()],{type:'application/pdf'});}
 async function restoreLibrary(say){
@@ -344,7 +344,7 @@ async function restoreLibrary(say){
  if(!files.length)return false;
  const file=files[0],data=validateManifest(await(await gj(`${GA}/${file.id}?alt=media`)).json());
  const staged=[];
- for(const remote of data.books){say('Loading '+remote.name+'…');let local=books.find(b=>b.driveId===remote.driveId),blob=local&&await dbGet('files',local.id);
+ for(const remote of data.books.filter(b=>!(data.dropped||[]).includes(b.driveId))){say('Loading '+remote.name+'…');let local=books.find(b=>b.driveId===remote.driveId),blob=local&&await dbGet('files',local.id);
  if(!blob){const meta=await(await gj(`${GA}/${remote.driveId}?fields=id,mimeType`)).json();blob=await downloadBook(meta);}
  const extra={...remote,owner:remote.src==='default'?undefined:user.email};
  // Generate a local cover without committing anything until every file is available.
@@ -353,20 +353,41 @@ async function restoreLibrary(say){
  staged.push({record,blob,audios});
  }
  const latest=await(await gj(`${GA}/${file.id}?fields=id,modifiedTime`)).json();if(latest.modifiedTime!==file.modifiedTime)throw new Error('Library changed during loading. Try again.');
- const db=await DB;await new Promise((resolve,reject)=>{const t=db.transaction(['books','files','audio','meta'],'readwrite');for(const key of ['books','files','audio'])t.objectStore(key).clear();for(const item of staged){t.objectStore('books').put(item.record,item.record.id);t.objectStore('files').put(item.blob,item.record.id);for(const [id,blob] of item.audios)t.objectStore('audio').put(blob,id);}t.objectStore('meta').put(data.folders,'folders');t.objectStore('meta').put(data.dropped||[],'dropped');t.objectStore('meta').put(latest,'cloudVersion');t.oncomplete=resolve;t.onerror=()=>reject(t.error);t.onabort=()=>reject(t.error);});
- books=staged.map(x=>x.record);folders=data.folders;dropped=data.dropped||[];cloudVersion=latest;return true;
+ const db=await DB;await new Promise((resolve,reject)=>{const t=db.transaction(['books','files','audio','meta'],'readwrite');for(const key of ['books','files','audio'])t.objectStore(key).clear();for(const item of staged){t.objectStore('books').put(item.record,item.record.id);t.objectStore('files').put(item.blob,item.record.id);for(const [id,blob] of item.audios)t.objectStore('audio').put(blob,id);}t.objectStore('meta').put(data.folders,'folders');t.objectStore('meta').put(data.dropped||[],'dropped');t.objectStore('meta').put(data.hiddenDefaultFolders||[],'hiddenDefaultFolders');t.objectStore('meta').put(latest,'cloudVersion');t.oncomplete=resolve;t.onerror=()=>reject(t.error);t.onabort=()=>reject(t.error);});
+ books=staged.map(x=>x.record);folders=data.folders;dropped=data.dropped||[];hiddenDefaultFolders=data.hiddenDefaultFolders||[];cloudVersion=latest;return true;
 }
-async function syncDrive(say=()=>{},interactive=true,includeDefault=false){
- if(accountLock())return 0;clearTimeout(cloudTimer);accountBusy=true;acct();
- try{await signIn(interactive,includeDefault);syncing=1;accountBusy=false;acct();
- const hadLocal=vis().length>0;
+// Shared data is read only. All preferences and deletions go to the user's library.json.
+async function loadDefaultLibrary(say){
+ const manifests=await listFiles(`'${q1(DEFAULT_FOLDER)}' in parents and name='default.json' and trashed=false`);
+ if(manifests.length!==1)throw new Error(manifests.length?'Multiple default.json files found in the shared library.':'No default.json found in the shared library.');
+ const data=validateManifest(await(await gj(`${GA}/${manifests[0].id}?alt=media`)).json());let count=0;
+ const defaultPath=f=>f===DEFAULT_NAME||f?.startsWith(DEFAULT_NAME+' / ')?f:f?DEFAULT_NAME+' / '+f:DEFAULT_NAME;
+ const addFolder=f=>{if(!hiddenDefaultFolders.includes(f)&&!folders.includes(f))folders.push(f)};
+ for(const f of data.folders)addFolder(defaultPath(f));
+ for(const remote of data.books){
+  if(dropped.includes(remote.driveId)||books.some(b=>b.driveId===remote.driveId))continue;
+  say('Loading shared book '+remote.name+'…');
+  const meta=await(await gj(`${GA}/${remote.driveId}?fields=id,mimeType`)).json(),blob=await downloadBook(meta);
+  const path=defaultPath(remote.folder),folder=hiddenDefaultFolders.includes(path)?'':path;
+  const record=await preparePdf(blob,remote.name,folder,{id:'default-'+remote.driveId,driveId:remote.driveId,src:'default',links:structuredClone(remote.links||{})});
+  for(const [page,link] of Object.entries(record.links))if(link.driveAudioId){const audioBlob=await(await gj(`${GA}/${link.driveAudioId}?alt=media`)).blob();link.audio=record.id+':'+page;await dbPut('audio',link.audio,audioBlob);}else if(link.audio){delete link.audio;}
+  if(folder)addFolder(folder);await dbPut('files',record.id,blob);await dbPut('books',record.id,record);books.push(record);count++;
+ }
+ await dbPut('meta','folders',folders);renderLib();return count;
+}
+async function syncDrive(say=()=>{},interactive=true,includeDefault=true){
+ if(accountLock())return 0;clearTimeout(cloudTimer);accountBusy=true;acct();let completed=false;
+ try{await signIn(interactive,true);syncing=1;accountBusy=false;acct();
+ // Restore the user's deletion history before considering any shared items.
+ const hadLocal=vis().length>0||dropped.length>0||hiddenDefaultFolders.length>0;
  if(!hadLocal)await restoreLibrary(say);
  let items=await walk(await root(),'',[],true);
- if(includeDefault&&readAllowed){try{items=items.concat(await walk(DEFAULT_FOLDER,DEFAULT_NAME,[],false));}catch(error){toast('Shared library: '+error.message);}}
  items=items.filter(x=>!books.some(b=>b.driveId===x.f.id)&&!dropped.includes(x.f.id));let count=0;
- for(const {f,path,mine} of items){say('Importing '+f.name+'…');const blob=await downloadBook(f);if(path&&!folders.includes(path)){folders.push(path);await dbPut('meta','folders',folders);}await addPdf(blob,f.name,path,mine?{driveId:f.id,owner:user.email,src:'mine'}:{driveId:f.id,src:'default'});count++;}
- status('Connected — '+count+' new book(s); device edits kept');return count;
- }finally{syncing=0;accountBusy=false;acct();}
+ for(const {f,path} of items){say('Importing '+f.name+'…');const blob=await downloadBook(f);if(path&&!folders.includes(path)){folders.push(path);await dbPut('meta','folders',folders);}await addPdf(blob,f.name,path,{driveId:f.id,owner:user.email,src:'mine'});count++;}
+ if(readAllowed){try{count+=await loadDefaultLibrary(say);}catch(error){toast('Shared library: '+error.message);status('Connected — shared library could not load: '+error.message);return count;}}
+ else toast('Allow read-only Drive access to load the shared library.');
+ status('Connected — '+count+' new book(s); device edits kept');completed=true;return count;
+ }finally{syncing=0;accountBusy=false;acct();if(completed)scheduleCloud();}
 }
 async function loadCloudLibrary(){
  if(accountLock())return;if(!user)return toast('Sign in with Google first.');
@@ -396,7 +417,7 @@ function settings(){
  <p class="settings-note settings-sync-note" id="settings-status" role="status" aria-live="polite">${user?esc(cloudState||'Your library is ready to sync.'):'Sign in to sync. Your device copy stays saved.'}</p></section>
  <details class="settings-more"><summary>More options <span aria-hidden="true">⌄</span></summary><div class="settings-more-content">
  ${user?'<button id="gsign">Reconnect Google</button>':''}
- <div><button id="gshared">Shared default library</button><p class="settings-note settings-hint">Asks for extra read-only Drive permission.</p></div>
+ <div><button id="gshared">Reload shared library</button><p class="settings-note settings-hint">Loads automatically after sign-in. Your deletions are saved privately.</p></div>
  <button id="gguest" ${user?'':'disabled'}>Import this device’s books</button>
  <details><summary>Storage &amp; privacy</summary><p class="settings-note">PDFs, audio, page links and progress are saved in your Drive. Signing out keeps your saved files and device copies. Deleting a book here does not delete its original Drive PDF.</p><p class="settings-note"><a href="policy.html">Privacy Policy</a> · <a href="terms.html">Terms</a></p></details>
  <details><summary>Site setup</summary><label>Google Client ID<input id="gcid" autocomplete="off" value="${esc(cid())}" placeholder="…apps.googleusercontent.com"></label><p class="settings-note">The site owner configures this public ID. Authorized origin: ${esc(location.origin)}.</p><button id="gconfig">Save setup</button></details>
@@ -516,7 +537,8 @@ $('#lnk').onclick=()=>{if(accountLock())return toast('Wait for sync to finish.')
 };
 
 /* ---------- boot ---------- */
-(async()=>{try{books=await dbAll('books');folders=(await dbGet('meta','folders'))||[];dropped=(await dbGet('meta','dropped'))||[];}catch(error){toast('Device storage unavailable: '+error.message);}acct();})();
+function rememberedAccount(){try{const a=JSON.parse(gget('pdf-flip-account')||'null');return a&&typeof a.sub==='string'&&/^[A-Za-z0-9_-]+$/.test(a.sub)&&typeof a.email==='string'?{sub:a.sub,email:a.email,name:typeof a.name==='string'?a.name:'',given_name:typeof a.given_name==='string'?a.given_name:''}:null}catch(e){return null}}
+(async()=>{accountBusy=true;acct();try{const remembered=rememberedAccount();if(remembered){user=remembered;await loadDeviceLibrary(remembered.sub);status('Account remembered — device library loaded. Reconnect Google to sync Drive.');}else{books=await dbAll('books');folders=(await dbGet('meta','folders'))||[];dropped=(await dbGet('meta','dropped'))||[];hiddenDefaultFolders=(await dbGet('meta','hiddenDefaultFolders'))||[];}}catch(error){toast('Device storage unavailable: '+error.message);}finally{accountBusy=false;acct();}})();
 // Google access is requested only after a user clicks Sign in or Sync.
 function showLegal(){if(location.hash==='#privacy'){location.replace('policy.html');return;}if(location.hash==='#terms'){location.replace('terms.html');return;}const key=location.hash.slice(1);document.body.dataset.legal=['privacy','terms'].includes(key)?key:'';}
 addEventListener('hashchange',showLegal);showLegal();
