@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>DCD Book — PDF Library</title>
+<style>
+:root{--bg:#f4f1ea;--panel:#fff;--ink:#2b2823;--muted:#7a746a;--line:#ddd6c8;--stage:#e6e0d3;--accent:#c0603a;--under:#d9d2c3;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);color-scheme:light}
+:root[data-theme=dark]{--bg:#17171a;--panel:#232327;--ink:#ececec;--muted:#9a9aa2;--line:#37373d;--stage:#0f0f11;--accent:#e58c62;--under:#2a2a2e;color-scheme:dark}
+*{box-sizing:border-box}html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif}
+button,input,select{font:inherit;color:var(--ink)}
+button{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:6px 12px;cursor:pointer}
+button:hover{border-color:var(--accent)}button.pri{background:var(--accent);border-color:var(--accent);color:#fff}
+input,select,textarea{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:7px 10px;min-width:0}
+.bar{display:flex;align-items:center;gap:8px;padding:10px 14px;background:var(--panel);border-bottom:1px solid var(--line);flex-wrap:wrap}
+.bar h1{font-size:18px;margin:0;white-space:nowrap;display:flex;align-items:center;gap:8px}.logo{width:26px;height:26px}:root[data-theme=dark] .logo{filter:invert(1)}
+.ic{width:18px;height:18px;fill:currentColor;flex:none}.bi{display:inline-flex;align-items:center;gap:6px}.sp{flex:1}
+.th{width:58px;height:30px;border-radius:15px;background:var(--line);position:relative;display:flex;justify-content:space-between;align-items:center;padding:0 7px;font-size:13px}
+.th span{z-index:1}.th b{position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:var(--panel);transition:transform .25s;box-shadow:0 1px 3px #0004}
+:root[data-theme=dark] .th b{transform:translateX(28px)}
+.lib,.rdr{height:100%;display:none;flex-direction:column}.show{display:flex}
+.libbody{flex:1;overflow:auto;padding:14px 18px 40px}
+.qj{position:relative;flex:1;min-width:200px;max-width:420px}.qj input{width:100%}
+.sug{position:absolute;top:100%;left:0;right:0;background:var(--panel);border:1px solid var(--line);border-radius:8px;margin-top:4px;z-index:20;box-shadow:0 6px 20px #0003;overflow:hidden}
+.sug div{padding:8px 12px;cursor:pointer}.sug div:hover,.sug .on{background:var(--line)}
+.fh{display:flex;align-items:center;gap:8px;margin:22px 0 10px;font-weight:600;font-size:16px;border-bottom:1px solid var(--line);padding-bottom:6px}
+.fh small{color:var(--muted);font-weight:400}.fh button{padding:0 7px;border:0;background:none;color:var(--muted)}
+.grid{display:flex;flex-wrap:wrap;gap:22px;align-items:flex-end}
+.card{width:150px;position:relative;cursor:pointer}
+.cover{position:relative;width:100%;border-radius:3px 6px 6px 3px;overflow:hidden;box-shadow:0 4px 14px #0004,inset 3px 0 5px #0003;transition:transform .2s}
+.card:hover .cover{transform:translateY(-4px) rotate(-1deg)}
+.cover img{width:100%;height:100%;display:block;object-fit:fill}
+.cover:before{content:"";position:absolute;left:0;top:0;bottom:0;width:9px;background:linear-gradient(90deg,#0005,#fff3 60%,#0002);z-index:1}
+.prog{position:absolute;left:0;right:0;bottom:0;height:4px;background:#0005}.prog i{display:block;height:100%;background:var(--accent)}
+.t{margin-top:8px;font-size:13px;font-weight:600;word-break:break-word}.t small{display:block;color:var(--muted);font-weight:400}
+.more{position:absolute;top:4px;right:4px;z-index:3;padding:0 7px;opacity:.85}
+.empty-msg{color:var(--muted);text-align:center;margin-top:80px}
+.stage{flex:1;background:var(--stage);display:flex;align-items:center;justify-content:center;overflow:hidden;min-height:0;position:relative}
+.persp{perspective:2600px}
+.book{position:relative;width:calc(var(--pw)*2);height:var(--ph);transform-style:preserve-3d;transition:transform .85s cubic-bezier(.4,.1,.2,1)}
+.book:before{content:"";position:absolute;left:50%;top:0;bottom:0;width:60px;margin-left:-30px;background:linear-gradient(90deg,#0000,#0003 48%,#0004 50%,#0003 52%,#0000);z-index:6;pointer-events:none;transition:opacity .4s}
+.book.single:before{opacity:0}
+.pg{position:absolute;top:0;width:50%;height:100%;background:#fff;box-shadow:0 8px 28px #0005;overflow:hidden;cursor:pointer;user-select:none}
+.pg.l{left:0;border-radius:4px 0 0 4px}.pg.r{left:50%;border-radius:0 4px 4px 0}
+.pg.empty{background:none;box-shadow:none;pointer-events:none}
+.pg img,.face img{width:100%;height:100%;display:block;object-fit:fill;pointer-events:none}
+.pn{position:absolute;bottom:4px;font-size:11px;color:#0008;font-style:normal;background:#fff8;padding:0 5px;border-radius:4px}
+.pg.l .pn{left:8px}.pg.r .pn{right:8px}
+.cz{position:absolute;bottom:0;width:90px;height:90px;z-index:7}.pg.r .cz{right:0}.pg.l .cz{left:0}
+.book.last .pg.r .cz{display:none}
+.cc{position:absolute;bottom:0;width:0;height:0;transition:width .25s,height .25s;filter:drop-shadow(-2px -2px 3px #0005);pointer-events:none}
+.pg.r .cc{right:0}.pg.l .cc{left:0;transform:scaleX(-1)}.cz:hover .cc{width:60px;height:60px}
+.cut,.fold{position:absolute;inset:0}.cut{background:var(--under);clip-path:polygon(100% 0,100% 100%,0 100%)}
+.fold{background:linear-gradient(135deg,#fff,#cfc8b8);clip-path:polygon(100% 0,0 100%,0 0)}
+.bd{position:absolute;top:8px;z-index:8;display:flex;gap:6px}.pg.r .bd{right:8px}.pg.l .bd{left:8px}
+.bd button{padding:3px 9px;font-size:12px;background:#fffd;color:#222;border-color:#0003}
+.flip{position:absolute;top:0;width:50%;height:100%;transform-style:preserve-3d;transition:transform .85s cubic-bezier(.4,.1,.2,1);z-index:5}
+.flip.f{left:50%;transform-origin:left center}.flip.f.go{transform:rotateY(-180deg)}
+.flip.b{left:0;transform-origin:right center}.flip.b.go{transform:rotateY(180deg)}
+.face{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;background:#fff;overflow:hidden}
+.face:after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,#0000 70%,#0002)}
+.bk{transform:rotateY(180deg)}.bk:after{background:linear-gradient(270deg,#0000 70%,#0002)}
+.rb{display:flex;align-items:center;gap:6px}.rb input[type=number]{width:70px;text-align:center}
+.ttl{font-weight:600;max-width:30vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mdl{position:fixed;inset:0;background:#0006;display:flex;align-items:center;justify-content:center;z-index:50;padding:16px}
+.box{background:var(--panel);border-radius:12px;padding:20px;width:100%;max-width:380px;display:flex;flex-direction:column;gap:10px}
+.box h3{margin:0}.box label{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--muted)}.row{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:8px 16px;border-radius:20px;z-index:60}
+
+.cloud-status{font-size:12px;color:var(--muted);max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.app-description{margin:0;padding:8px 14px;font-size:12px;color:var(--muted);border-bottom:1px solid var(--line)}a{color:var(--accent)}button:disabled{opacity:.5;cursor:wait}.box{max-height:90dvh;overflow:auto}.settings-note{font-size:12px;color:var(--muted);margin:0}.box label.check-row{display:flex;flex-direction:row;align-items:center;gap:8px}details summary{cursor:pointer}details label{margin:10px 0}.legal{display:none;max-width:800px;margin:24px auto;padding:28px;background:var(--panel);border:1px solid var(--line);border-radius:16px}.legal h1{font-size:28px}.legal h2{font-size:20px;margin-top:28px}body[data-legal=privacy]>.lib,body[data-legal=privacy]>.rdr,body[data-legal=terms]>.lib,body[data-legal=terms]>.rdr{display:none}body[data-legal=privacy]>#privacy,body[data-legal=terms]>#terms{display:block}@media(max-width:600px){.bar{padding:9px;gap:7px}.bar h1{font-size:16px}.qj{order:2;min-width:100%;max-width:none}.cloud-status{max-width:100%;flex-basis:100%}.legal{margin:12px;padding:20px}.bar button{min-height:38px}}
+</style>
+</head>
+<body>
+<section class="lib show" id="lib">
+  <div class="bar">
+    <h1><img class="logo" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGAAAABgCAYAAADimHc4AAAK4ElEQVR42u2da4xVVxXHf+fOZQYoLW+QZwu1ilVifLQJpSnVD7RWjBjjB021xljr44O1iUmNMZr6TD/4hQ+t8RENMcYPxsQWiU1aNfGFVZJKfaBSpbbCDNDCQGGGufceP5z/dhabfR733jMzV7NXsnNf55y99vqvvfZa69yzNkSKFClSpEiRIkWKNOuU9HD8kN6n5jUNXDMx71OvDbpMkhz+CYw18cbd7maM3QDQADo1DdCB2Knpmv1QQ61r4dUhq6QLoaXAGuAdwCuBFcBVagt0TAeYAM4DLwJjwL+BI8A/gKPAqRxAZhMMJ/SQwJcDVwObgGuBtcAqYCmwUM3NhAvAuNpJ4DDwQ+CYkVnf5LT1jcDxgDnppp0CfgXsAd4DbAz0NTSDgg9df6N42SPeTvU5xuOSFXWNxWnLAXUwAUyptQralHdciNlzwOPAfdK4kJmqS/B2tm9Sn4+LhxBvoTGUjXVC5/7GM219L9KrxKgzE71qR8cw7INyFvg+cJvXf6NP5bGCv019nM0RdquG8XUkq1U9OjpBANYBL5lObKftAk1plwzIAmK//ylwh+Gj2QPv9pw7dE3bRxWBO4G2c2Z2O3B8KlmtqxOAtQUAVNWMqZJBdwxo7rsfA1u7nA1W67fqGlZZivpvFwi36jgdAGurANDsA5xUF/+dVv+OBn8lsEiva4CVwEigr7YnMGv32/r8FuBW4MvAF9THkDk3ZOvduZ8BPiUPzQlmKDCGjrdOWJBb8m5GgTMS7LjOSYDrgDcYWcxYoBaaAc5s3Flw/gK5dDcB75en8WtzLWsO2jkLoXv/GLC+QHHcd+t1bOgavtm0300ATwIPAx8EdsgNXVQwvjs9WXQ9A3yvo+m1eXrdUADAPTp3xLh5jZKOrwHeJ5/5jCesTo75SoHngG0BENz7bTrG8dfJMXOpEdQ+CfzlFUzbkDfWewoA2ODJ0LZLvLIqCC0y7poPwN0FWpkYxl3nfn9Xy1T8rURrp4y3tNP06frdabybqZLZ9E/gs9Lw0ExqliiS6/PuHADOlcyc/8qnaaK1m+U6JZ4AO4oOmz2uE2nJQnlUNn4P8AHgkzIjqacgTfGyCHgUeBvwE+NePiJt63i8psb+HwO+CnxdM8/GOR0zQ/qlJvBuBXUNTwapMgS/cN+/DHiihxW/ygyoav7suSuBrxXMBrdWjANb1Ma939LA52/KKbBCavQh4NAM6KY9IdnzI88vzmszBUAeELuBEyUgHFULCb9l0h/v9ISX1KDhZQCURc6pZM/FHn3eugEIAXEd8IccEDo57+2xTytxWJfg65wBbeBiQ3azUWLDZzOH7wTY1ML8ZrmHvv+fGLudePHFEPB7nXtY12rNwTiKZNcA5jUqaGMyU0FGCbUkyJPA7cBfAiD4CS8n/MNamMf0uTUH/FeSXaMEwfYc3zRxAn0BeLte8/LsLhp1x54qiZpnmmweKe0GAMfwg8D1arcqUoTZv6XYlgn5K/ChgFtnAWjoGGd2Zlv4jq8JyczJ70FPtoW5IHeR5zVo5I3M5a1Dtyb8ANgLvNfMDjtT9uqY5hyZHav9f9RsdLIMKm+RCRo2NnYhc0/OxDwUiODd+4eo8VZgn7TQyG+4l2yozRR2GAxKS3huMjj/urBrZ1drwKBT2uNvA0n/iwD8X1EEIAIQAYgUAYgARIoARAAiRQAiAJEiABGASBGACECkCEAEIFIEIAIQKQIQAYgUAYgARIoARAAiRQAiAJEiABGASBGACECkCEAEIFIN1KwJxCb5z5vl1dwcdArVD/Xl1hgEAM4y/Qh+GbkyLfbp9kERdsPw1qb4IeuWGfucAeDQfxdZrZ1hsjo5rp0ne1B6jKzi1Akuf0zTr1Qy2+bX9u3ztoys6NJKteVklVrmq00Ar+93JtQBwG61IjpD9qjmEeAgWemBg2TlYzqeFs7kzEg8obu+10iYN+h1s4S/dKbX0jpMUJ72JmbAi9WuJ6vz40A5SFZe7BGy52rbxlTVCYTjo236eLV42SmhLy4YX1Hdo8ZsmKCkwlQuIr9SiAPlTWqfB34JfIfsQevxmoDwBX8VWemau4Dt3vht4Y/EU6Be+64NgJfIytqMGMbSLhgIeRJ2IW6SFcnbAXwO+AbZQ9cn+5jiDWPbVwAfIasNt9FbTBOjRGW1M8rG68Z0UTKrxXaNAKeB/dJIp8VJSXNaFSri6hh2teRSo6UbgQeAp4B7zSxodjmzXYnLe3WtB3TttvFy/AJ6tn6o47uT45b6zZZG2y+ZjVRhNq8Q0336fZ46WE5Wq83axHNkVUlGtciekG2/QHmxp6ICqrYA0gGyspdOCLcEXEX3/hYjzJuYrnedV0WxqHqv3y5obCc01lGN3a89vU+ySiQ7JMtgYadmFwCdAnYBryErynpGKJ83WtMU6vNl4zdI664BXqWFb7OnzW3P1iberLgR+DlZlcMvAZMFvE7qvE/LlLmiHUOBGWSLudpNKZ6RQ/BnsuqKR8lKYZ6R6zlprunqaCzReM8Bh7owW11Na6dZT3dxziHv8zBZCbHtZEWYdoh5XyAWCFcJ5YtkJcy+y+VVslz1rCuBb2uRTY1S4AFu7f1pAbyfrHz9YdnwqnSabI8EX06VHYcyE9QMrBtDZhDWW3CaNk/CHjGBy0hgzdkIfExxgV8wO6/g6hjhIoIt/VZUANZ+9yTwUc1SP1r3+R5mugCrP/aGJ5OQgueaoG4BCBViravO/81cWmg7r6Z/2ucxj6qvuqLpokKvzX7XAH/TnqLyW1eRFX5drghyKdPbnPilkC/IXp7TGvKCouQPKy64H3hFwH0dorhQdl6B7pSs5txXgJ+Jp91Mb0uySG0Bl+4l0GJ6e5IX1U5qIR4vCEKHjOzava4BzrWa9BBfT1byd4si22v13WrlT/qJrtuywUXF7pI+Asb7gW/1yWNLCjNq0it/0qJ9RAt220vaJb0AcBG4wuRIbgBeK49mQRdrSjcR65BAnYm08pacILDb1HRTM30V03sbOLogz+kprTEu53WxTMt9ASZyx4aZLhmfl//xg69+Slz6QV6d1CmIyrvlkYCS5UXSzwmAzSHzWSWlkBLebKEqo3kuWdJt3mQGqG4erccFl28eVGkG+BrTKGHen8oJ5fsHUJAXguK7Ub3OqtS7fr88VlXIQjl2U2HQMlBlm6m2FvDziiBtDr6pdcT62UWLXrcC8xN9eTQlHifUWp5/v0Be0nCFvFnbyKYyr0kgqgwNIm8qHQf+pYXn78Cz8gzGlLo4r4Vp0lzLJcnmm4BnNVkp9/WKdrcqYl7n9dsx6ey87GoohexqoB4iq0f9PNnNoFHD32QAgBEBcIU8vNW6UbNR3t8mBXKrCkx3ESBpImbWmM7TnAVlTGmIA0xv3PMsNdwXzaGFGuR23TTZJpD8mUFA00fJ9qp5jGyjhGeqpod7oMVku4BsIdtB70blvFbkOC6JsQLHINvLJRQxjpLVt/+4MotLS4I1GxGGUhV5ze7N4q4Rmu5LlAzcq/yLz+9p/bYrh9dGDo9V+AvxWLTALpPifILsbt9YjozvchfYpSh0ibR7P/BbRX7+IBrMzva0VgCpF1GuI9si5K36vA/4HtMlgq0H0plFPsnJFixTHHU78DplVh8G9tub1HnRY4PB+BuJP0hyUgAMEK8Jxf/4aCRejiU17wfpfzt5imFdvEHYm7gqIEmJIkWKFClSpEiRIkWKNJP0HyzzBdp1b8YwAAAAAElFTkSuQmCC" alt=""> DCD Book</h1>
+    <div class="qj"><input id="qj" placeholder='Quick open: "calculus 45"' autocomplete="off"><div class="sug" id="sug" hidden></div></div>
+    <div class="sp"></div>
+    <select id="impf" title="Import into folder"></select>
+    <button class="pri bi" id="imp"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m17,10c-3.859,0-7,3.141-7,7s3.141,7,7,7,7-3.141,7-7-3.141-7-7-7Zm0,12c-2.757,0-5-2.243-5-5s2.243-5,5-5,5,2.243,5,5-2.243,5-5,5Zm1-6h2v2h-2v2h-2v-2h-2v-2h2v-2h2v2Zm-8.482,6H3c-.552,0-1-.448-1-1s.448-1,1-1h5.523c-.226-.638-.388-1.306-.464-2h-2.059V2h12v6.058c.695.077,1.362.239,2,.464V2c0-1.103-.898-2-2-2H3C1.346,0,0,1.346,0,3v18c0,1.654,1.346,3,3,3h8.349c-.706-.571-1.325-1.244-1.831-2ZM2,3c0-.552.448-1,1-1h1v16h-1c-.352,0-.686.072-1,.184V3Z"/></svg> Import</button>
+    <button class="bi" id="syn"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M19,0H5A5.006,5.006,0,0,0,0,5V19a5.006,5.006,0,0,0,5,5H19a5.006,5.006,0,0,0,5-5V5A5.006,5.006,0,0,0,19,0ZM7,22V21a5,5,0,0,1,10,0v1Zm15-3a3,3,0,0,1-3,3V21A7,7,0,0,0,5,21v1a3,3,0,0,1-3-3V5A3,3,0,0,1,5,2H19a3,3,0,0,1,3,3Z"/><path d="M12,4a4,4,0,1,0,4,4A4,4,0,0,0,12,4Zm0,6a2,2,0,1,1,2-2A2,2,0,0,1,12,10Z"/></svg> Sign in</button>
+    <button id="usr" hidden></button><button id="signout" hidden>Sign out</button>
+    <button id="settings" title="Google Drive settings" aria-label="Google Drive settings">⚙ Settings</button>
+    <span id="cloud-status" class="cloud-status" role="status" aria-live="polite">Local library</span>
+    <button id="nf" class="bi" title="New folder" aria-label="New folder"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6h-8l-2-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2Zm0 12H4V6h5.2l2 2H20v10Zm-7-8h-2v2H9v2h2v2h2v-2h2v-2h-2v-2Z"/></svg></button>
+    <button class="th" aria-label="Toggle dark mode"><span>☀️</span><span>🌙</span><b></b></button>
+    <input type="file" id="file" accept="application/pdf" multiple hidden>
+  </div>
+  <p class="app-description">Read PDFs as flipbooks, attach audio and page links, and save your personal library to your Google Drive. <a href="#privacy">Privacy</a> · <a href="#terms">Terms</a></p>
+  <div class="libbody" id="libbody"></div>
+</section>
+
+<section class="rdr" id="rdr">
+  <div class="bar">
+    <button id="back">← Library</button>
+    <span class="ttl" id="ttl"></span>
+    <div class="sp"></div>
+    <button id="ret" hidden>↩ Back</button>
+    <div class="rb">
+      <button id="prev">◀</button>
+      <input type="number" id="pn" min="1" title="Jump to page (Enter)"><span id="tot"></span>
+      <button id="next">▶</button>
+    </div>
+    <button id="lnk">🔗 Link</button>
+    <button class="th" aria-label="Toggle dark mode"><span>☀️</span><span>🌙</span><b></b></button>
+  </div>
+  <div class="stage" id="stage"><div class="persp"><div class="book single" id="book"><div class="pg l empty" id="L"></div><div class="pg r empty" id="R"></div></div></div></div>
+</section>
+
+<section class="legal" id="privacy"><nav><a href="#">← DCD Book</a> · <a href="#terms">Terms</a></nav><h1>DCD Book — Privacy Policy</h1><p>Effective date: 15 October 2026</p>
+<p>DCD Book is a PDF flipbook reader maintained by the site owner. It supports local PDFs, reading progress, page links, attached audio and optional Google Drive storage.</p>
+<h2>Google access and purpose</h2><p>When you sign in, the app uses your Google account identifier, name, email and profile information to identify your account and separate its device storage. It requests permission to create and access app-created Drive files (drive.file) to save your personal PDFs, attached audio, folder names, links and reading progress. It creates a “DCD Book Library” folder and a library.json file in your Drive. This data is used to provide the reader and library features you choose.</p>
+<p>Loading the optional shared default library asks separately for broader read-only Drive access (drive.readonly), because the shared folder was not created by the app. With that permission, the app reads that configured shared folder and your app library; its code does not scan your unrelated Drive files. Google may require additional consent and verification for this optional permission.</p>
+<h2>Storage and sharing</h2><p>PDFs, audio, account-specific library metadata and reading progress are cached in IndexedDB on your device. Theme, autosave preferences and an optional public Client ID override are stored in browser local storage. Guest storage and each Google account use separate databases. Cached account data remains after sign-out; someone who can access your browser storage may be able to read it. Google access tokens are held in page memory, not stored by this app in browser storage.</p>
+<p>Private uploads and library metadata are sent directly from your browser to Google Drive. The app does not send those files to an app-owner server or make them public. File visibility follows the permissions in your Drive. Google handles authentication and storage under its <a href="https://policies.google.com/privacy">Privacy Policy</a>. Cloudflare hosts this site and CDN providers deliver the PDF reader code; providers may process IP addresses and technical request information. The app includes no advertising or separate analytics tracker.</p>
+<h2>Limited Use</h2><p>DCD Book’s use of information received from Google APIs adheres to the <a href="https://developers.google.com/terms/api-services-user-data-policy">Google API Services User Data Policy</a>, including its Limited Use requirements. Google data is used only for these visible library features. It is not sold, used for advertising or used to train AI models.</p>
+<h2>Control, retention and deletion</h2><p>Autosave can be disabled in Settings. Save library uploads your library; Load from Drive can replace this account’s device library after confirmation. Import guest books copies this device’s guest PDFs and attachments into the connected account’s library, which can then be uploaded.</p>
+<p>Sign out clears the current app connection but keeps Drive files and device caches; it does not sign you out of Google or revoke permissions. Delete “DCD Book Library” in Drive and empty its trash to permanently remove saved cloud files. Clear this site’s data in browser settings on every device to remove cached data. Revoke permissions at <a href="https://myaccount.google.com/connections">Google Account → Third-party connections</a>. Deleting a book in the app removes it from the library, not its original Drive PDF or previously uploaded audio. Account data stays until you remove it through these controls.</p>
+<h2>Contact and supervised use</h2><p>For support or privacy requests, use the support email shown on DCD Book’s Google consent screen. Do not share private PDFs or credentials in public support channels. Adults should supervise children and manage any connected Google account in accordance with Google’s account rules. This page will be updated when data handling changes.</p></section>
+<section class="legal" id="terms"><nav><a href="#">← DCD Book</a> · <a href="#privacy">Privacy</a></nav><h1>DCD Book — Terms of Service</h1><p>Effective date: 15 October 2026</p><p>By using DCD Book you agree to these terms. The service is a PDF reading and library tool operated by the site owner.</p><h2>Your files and accounts</h2><p>You retain your rights to content you import and authorize the app to process, display and save it for the features you choose. Use only files and accounts you are permitted to access. Respect copyright, privacy and applicable law. Do not use the app to distribute unlawful material or interfere with other users or service providers. Children should use the app with adult supervision.</p><h2>Saving and responsibility</h2><p>Local use does not require Google sign-in. Cloud saving requires a working Google connection, available Drive storage and appropriate permissions. Autosave may fail because of expired authorization, network issues or conflicting changes. Keep separate copies of important files. Load from Drive replaces the current account’s device library after confirmation. Deleting a library entry does not delete its original Drive file.</p><h2>Availability and third parties</h2><p>DCD Book is provided as available without additional warranties, to the extent permitted by applicable law. The app may change, become unavailable or be discontinued. Google, Cloudflare and CDN services have their own terms and availability limits. These terms do not exclude rights or responsibilities that applicable law does not allow to be excluded. Future app charges, if any, will be disclosed before you are asked to agree to them.</p><h2>Privacy, contact and updates</h2><p>The <a href="#privacy">Privacy Policy</a> explains Google permissions, local copies and removal controls. For questions, use the support email on the Google consent screen. Revised terms will appear here with a new effective date.</p></section>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script>
+const $=(q,r=document)=>r.querySelector(q);
+pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+/* ---------- theme ---------- */
+function setTheme(t){document.documentElement.dataset.theme=t;try{localStorage.setItem('fb-theme',t)}catch(e){}}
+try{setTheme(localStorage.getItem('fb-theme')==='dark'?'dark':'light')}catch(e){}
+document.querySelectorAll('.th').forEach(b=>b.onclick=()=>setTheme(document.documentElement.dataset.theme==='dark'?'light':'dark'));
+
+/* ---------- storage (IndexedDB) ---------- */
+function openBookDB(scope){return new Promise((res,rej)=>{const r=indexedDB.open(scope==='guest'?'flipbook':'dcd-book:'+scope,1);r.onupgradeneeded=()=>['books','files','audio','meta'].forEach(s=>r.result.createObjectStore(s));r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);});}
+let DB=openBookDB('guest');
+const tx=async(s,m,f)=>{const d=await DB;return new Promise((res,rej)=>{const t=d.transaction(s,m),q=f(t.objectStore(s));t.oncomplete=()=>res(q&&q.result);t.onerror=()=>rej(t.error)})};
+const dbGet=(s,k)=>tx(s,'readonly',o=>o.get(k)),dbPut=(s,k,v)=>tx(s,'readwrite',o=>o.put(v,k)),dbDel=(s,k)=>tx(s,'readwrite',o=>o.delete(k)),dbAll=s=>tx(s,'readonly',o=>o.getAll());
+let books=[],folders=[],dropped=[];
+const saveBook=async b=>{try{await dbPut('books',b.id,b);scheduleCloud();}catch(error){toast('Device save failed: '+error.message);}};
+const saveFolders=async()=>{try{await dbPut('meta','folders',folders);scheduleCloud();}catch(error){toast('Device save failed: '+error.message);}};
+const toast=m=>{const t=document.createElement('div');t.className='toast';t.textContent=m;document.body.append(t);setTimeout(()=>t.remove(),2200)};
+function modal(h){const m=document.createElement('div');m.className='mdl';m.innerHTML=`<div class="box">${h}</div>`;document.body.append(m);m.onclick=e=>{if(e.target===m)m.remove()};return m}
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+/* ---------- library ---------- */
+function renderLib(){
+  const sel=$('#impf'),cur=sel.value;
+  sel.innerHTML='<option value="">Unfiled</option>'+folders.filter(f=>!f.startsWith('Default library')).map(f=>`<option>${esc(f)}</option>`).join('');sel.value=folders.includes(cur)?cur:'';
+  const groups=[...folders,''].map(f=>({f,items:vis().filter(b=>(b.folder||'')===f)})).filter(g=>g.f||g.items.length);
+  const body=$('#libbody');
+  if(!vis().length&&!folders.length){body.innerHTML='<div class="empty-msg">No books yet.<br>Import a PDF to start, or sign in with Google to load your own library.<br>The shared default library is available in Settings.</div>';return}
+  body.innerHTML=groups.map(g=>`<div class="fh">📁 ${g.f?esc(g.f):'Unfiled'} <small>${g.items.length}</small><span class="sp"></span>${g.f?`<button data-df="${esc(g.f)}" title="Delete folder">✕</button>`:''}</div><div class="grid">${g.items.map(b=>`<div class="card" data-id="${b.id}"><button class="more" data-e="${b.id}">⋯</button><div class="cover" style="aspect-ratio:${b.aspect}"><img src="${b.thumb}"><div class="prog"><i style="width:${Math.round(((b.last||1)/b.pages)*100)}%"></i></div></div><div class="t">${esc(b.name)}<small>p.${b.last||1} / ${b.pages}</small></div></div>`).join('')||'<span style="color:var(--muted)">Empty folder</span>'}</div>`).join('');
+}
+$('#libbody').onclick=e=>{
+  const ed=e.target.closest('[data-e]'),df=e.target.closest('[data-df]'),c=e.target.closest('.card');
+  if(accountLock())return toast('Wait for sync to finish.');
+  if(ed){editBook(books.find(b=>b.id===ed.dataset.e));return}
+  if(df){folders=folders.filter(f=>f!==df.dataset.df);books.forEach(b=>{if(b.folder===df.dataset.df){b.folder='';saveBook(b)}});saveFolders();renderLib();return}
+  if(c)openBook(c.dataset.id);
+};
+function editBook(b){
+  const m=modal(`<h3>Edit book</h3><label>Name<input id="en" value="${esc(b.name)}"></label><label>Folder<select id="ef"><option value="">Unfiled</option>${folders.map(f=>`<option ${f===b.folder?'selected':''}>${esc(f)}</option>`).join('')}</select></label><div class="row"><button id="ed">Delete</button><button id="ec">Cancel</button><button class="pri" id="es">Save</button></div>`);
+  $('#ec',m).onclick=()=>m.remove();
+  $('#es',m).onclick=()=>{b.name=$('#en',m).value.trim()||b.name;b.folder=$('#ef',m).value;saveBook(b);renderLib();m.remove()};
+  let sure=0;$('#ed',m).onclick=async e=>{if(!sure){sure=1;e.target.textContent='Really delete?';return}
+    if(b.driveId){dropped.push(b.driveId);dbPut('meta','dropped',dropped)}books=books.filter(x=>x!==b);await dbDel('books',b.id);await dbDel('files',b.id);for(const k of Object.values(b.links||{}))if(k.audio)dbDel('audio',k.audio);renderLib();scheduleCloud();m.remove()};
+}
+$('#nf').onclick=()=>{if(accountLock())return;
+  const m=modal('<h3>New folder</h3><input id="fn" type="text" placeholder="Folder name" autocomplete="off" autocapitalize="sentences" spellcheck="false" style="-webkit-user-select:text;user-select:text"><div class="row"><button id="fc">Cancel</button><button class="pri" id="fo">Create</button></div>');
+  const inp=$('#fn',m);
+  ['keydown','keyup','keypress','input'].forEach(t=>m.addEventListener(t,e=>e.stopPropagation()));
+  $('#fc',m).onclick=()=>m.remove();
+  const ok=()=>{const v=inp.value.trim();if(v&&!folders.includes(v)){folders.push(v);saveFolders();renderLib()}m.remove()};
+  $('#fo',m).onclick=ok;
+  inp.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();ok()}else if(e.key==='Escape')m.remove()};
+  inp.focus();setTimeout(()=>inp.focus(),60);
+};
+$('#imp').onclick=()=>$('#file').click();
+async function preparePdf(f,name,folder,extra){
+ const doc=await pdfjsLib.getDocument({data:await f.arrayBuffer()}).promise;
+ try{const page=await doc.getPage(1),v0=page.getViewport({scale:1}),v=page.getViewport({scale:420/v0.height});
+ const canvas=document.createElement('canvas');canvas.width=v.width;canvas.height=v.height;await page.render({canvasContext:canvas.getContext('2d'),viewport:v}).promise;
+ return {id:'b'+crypto.randomUUID(),name:name.replace(/\.pdf$/i,''),folder:folder===undefined?$('#impf').value:folder,last:1,links:{},...(extra||{}),pages:doc.numPages,aspect:+(v0.width/v0.height).toFixed(4),thumb:canvas.toDataURL('image/jpeg',.8)};
+ }finally{await doc.destroy();}
+}
+async function addPdf(f,name,folder,extra){
+ const b=await preparePdf(f,name,folder,extra);await dbPut('files',b.id,f);await dbPut('books',b.id,b);books.push(b);renderLib();return b;
+}
+$('#file').onchange=async e=>{
+ if(accountLock()){e.target.value='';return toast('Wait for the current sync to finish.');}
+ accountBusy=true;acct();
+ try{for(const file of e.target.files){try{toast('Importing '+file.name+'…');await addPdf(file,file.name,undefined,user?{owner:user.email,src:'mine'}:undefined);}catch(error){toast('Could not import '+file.name+': '+error.message);}}}
+ finally{e.target.value='';accountBusy=false;acct();scheduleCloud();}
+};
+
+/* Google identity and private library sync. Set once for all visitors. */
+const GOOGLE_CLIENT_ID='';
+const DEFAULT_FOLDER='18y_MPhhWTGMMjtxb2Pj4rDiw8Iasx6GA',DEFAULT_NAME='Default library',MY_ROOT='DCD Book Library';
+const GA='https://www.googleapis.com/drive/v3/files';
+const SCOPE='openid email profile https://www.googleapis.com/auth/drive.file';
+const READ_SCOPE='https://www.googleapis.com/auth/drive.readonly';
+const gget=k=>{try{return localStorage.getItem(k)||''}catch(e){return ''}},gset=(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}};
+const cid=()=>GOOGLE_CLIENT_ID||gget('dcd-client-id');
+let gtok='',gexp=0,user=null,myRoot='',syncing=0,accountBusy=false,cloudTimer=0,cloudVersion=null,cloudState='Local library',readAllowed=false,authBusy=false;
+const autoEnabled=()=>gget('dcd-auto:'+(user?.sub||'guest'))!=='false';
+const vis=()=>books.filter(b=>!b.owner||(user&&b.owner===user.email));
+function status(text){cloudState=text;$('#cloud-status').textContent=text;$('#cloud-status').title=text;const label=$('#settings-status');if(label)label.textContent=text;}
+function accountLock(){return syncing||accountBusy||authBusy;}
+function acct(){
+ $('#syn').textContent=user?'☁ Sync':'Sign in with Google';$('#usr').hidden=!user;$('#usr').textContent=user?'👤 '+(user.given_name||user.name||user.email):'';
+ $('#signout').hidden=!user;$('#syn').disabled=!!accountLock();$('#usr').disabled=!!accountLock();$('#signout').disabled=!!accountLock();
+ $('#imp').disabled=$('#nf').disabled=!!accountLock();renderLib();
+}
+function gAuth(interactive=true,extra=false,force=false){return new Promise((res,rej)=>{
+ if(!force&&gtok&&Date.now()<gexp&&(!extra||readAllowed))return res(gtok);
+ if(!cid())return rej(new Error('Google sign-in needs DCD Book’s Client ID. Open Settings → Site setup.'));
+ if(!window.google?.accounts?.oauth2)return rej(new Error('Google sign-in is still loading. Check your connection and try again.'));
+ if(authBusy)return rej(new Error('A Google sign-in window is already open.'));
+ authBusy=true;acct();
+ const finish=()=>{authBusy=false;acct();};
+ try{google.accounts.oauth2.initTokenClient({client_id:cid(),scope:SCOPE+(extra?' '+READ_SCOPE:''),include_granted_scopes:true,
+ callback:r=>{finish();if(r.error)return rej(new Error(r.error_description||r.error));gtok=r.access_token;gexp=Date.now()+(Number(r.expires_in)-60)*1000;readAllowed=google.accounts.oauth2.hasGrantedAllScopes(r,READ_SCOPE);res(gtok);},
+ error_callback:e=>{finish();rej(new Error(e.type==='popup_closed'?'Sign-in cancelled.':e.type==='popup_failed_to_open'?'Allow Google popups and try again.':'Google sign-in failed.'));}
+ }).requestAccessToken({prompt:force?'select_account':interactive?'':'none'});}catch(error){finish();rej(error);}
+});}
+async function gj(url,o={}){
+ if(!gtok||Date.now()>=gexp)throw new Error('Google connection expired. Click Sign in or Sync to reconnect. Your device copy is kept.');
+ const token=gtok,r=await fetch(url,{...o,headers:{...(o.headers||{}),Authorization:'Bearer '+token}});
+ if(r.status===401){gtok='';status('Reconnect Google to sync');throw new Error('Google connection expired. Please reconnect.');}
+ if(!r.ok){let message='';try{message=(await r.json()).error.message}catch(e){}throw new Error(message||'Google Drive returned HTTP '+r.status);}return r;
+}
+async function loadDeviceLibrary(scope){
+ const old=await DB;old.close();DB=openBookDB(scope);await DB;
+ books=await dbAll('books');folders=(await dbGet('meta','folders'))||[];dropped=(await dbGet('meta','dropped'))||[];cloudVersion=(await dbGet('meta','cloudVersion'))||null;
+ renderLib();
+}
+async function signIn(interactive=true,extra=false,force=false){
+ if(B)closeBook();
+ const previous=user;
+ await gAuth(interactive,extra,force);
+ let next;try{next=await(await gj('https://www.googleapis.com/oauth2/v3/userinfo')).json();if(!next.sub||!next.email)throw new Error('Google did not identify the account.');}
+ catch(error){gtok='';gexp=0;user=null;myRoot='';clearTimeout(cloudTimer);await loadDeviceLibrary('guest');acct();throw error;}
+ if(previous?.sub!==next.sub){clearTimeout(cloudTimer);document.querySelectorAll('.mdl').forEach(m=>m.remove());user=next;myRoot='';await loadDeviceLibrary(next.sub);}else user=next;
+ status('Connected: '+user.email);acct();
+}
+async function signOut(){
+ if(accountLock())return toast('Wait for the current sync to finish.');
+ if(B)closeBook();clearTimeout(cloudTimer);document.querySelectorAll('.mdl').forEach(m=>m.remove());
+ accountBusy=true;acct();try{gtok='';gexp=0;user=null;myRoot='';readAllowed=false;await loadDeviceLibrary('guest');status('Signed out — Drive files and device copies kept');}catch(error){toast(error.message);}finally{accountBusy=false;acct();}
+}
+const q1=t=>String(t).replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+async function listFiles(query,fields='id,name,mimeType,modifiedTime,appProperties'){
+ let out=[],page='';do{const args=new URLSearchParams({q:query,fields:'nextPageToken,files('+fields+')',pageSize:'200',supportsAllDrives:'true',includeItemsFromAllDrives:'true',...(page?{pageToken:page}:{})});const j=await(await gj(GA+'?'+args)).json();out.push(...j.files);page=j.nextPageToken||'';}while(page);return out;
+}
+async function findOrMake(name,parent){
+ const files=await listFiles(`name='${q1(name)}' and mimeType='application/vnd.google-apps.folder' and '${q1(parent)}' in parents and trashed=false`);
+ if(files.length>1)throw new Error('Multiple folders named '+name+' found. Keep one before syncing.');
+ if(files.length)return files[0].id;
+ return(await(await gj(GA+'?fields=id',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,mimeType:'application/vnd.google-apps.folder',parents:[parent]})})).json()).id;
+}
+const root=async()=>myRoot||(myRoot=await findOrMake(MY_ROOT,'root'));
+async function putFile(metadata,blob,id){
+ const boundary='dcd'+crypto.randomUUID(),body=new Blob(['--'+boundary+'\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n',JSON.stringify(metadata),'\r\n--'+boundary+'\r\nContent-Type: '+(blob.type||'application/octet-stream')+'\r\n\r\n',blob,'\r\n--'+boundary+'--\r\n']);
+ return(await gj('https://www.googleapis.com/upload/drive/v3/files'+(id?'/'+id:'')+'?uploadType=multipart&fields=id,modifiedTime',{method:id?'PATCH':'POST',headers:{'Content-Type':'multipart/related; boundary='+boundary},body})).json();
+}
+async function upload(b,f){
+ if(b.driveId)return;
+ let parent=await root();for(const part of (b.folder||'').split(' / ').filter(Boolean))parent=await findOrMake(part,parent);
+ const file=await putFile({name:b.name+'.pdf',parents:[parent]},f);
+ b.driveId=file.id;b.owner=user.email;b.src='mine';await dbPut('books',b.id,b);
+}
+async function listDir(id){return listFiles(`'${q1(id)}' in parents and trashed=false`);}
+async function walk(id,path,acc,mine,seen=new Set()){
+ if(seen.has(id))return acc;seen.add(id);
+ for(const f of await listDir(id)){if(f.mimeType==='application/vnd.google-apps.folder')await walk(f.id,path?path+' / '+f.name:f.name,acc,mine,seen);else if(['application/pdf','application/vnd.google-apps.document','application/vnd.google-apps.presentation'].includes(f.mimeType))acc.push({f,path,mine});}return acc;
+}
+function scheduleCloud(){
+ clearTimeout(cloudTimer);if(!user||!autoEnabled()||syncing||accountBusy)return;
+ status('Changes saved on this device');cloudTimer=setTimeout(()=>saveLibrary().catch(error=>{status(error.message);toast(error.message);}),1800);
+}
+async function saveLibrary(){
+ if(syncing||accountBusy)return; if(!user)throw new Error('Sign in with Google first.');
+ if(!gtok||Date.now()>=gexp)throw new Error('Reconnect Google before saving. Your device copy is kept.');
+ syncing=1;clearTimeout(cloudTimer);acct();
+ try{
+ const folder=await root(),files=await listFiles(`'${q1(folder)}' in parents and name='library.json' and trashed=false`);
+ if(files.length>1)throw new Error('Multiple library.json files found in DCD Book Library. Keep one before saving.');
+ const existing=files[0];if(existing&&(!cloudVersion||cloudVersion.id!==existing.id||cloudVersion.modifiedTime!==existing.modifiedTime))throw new Error('Your Drive library changed. Load from Drive before saving. Device changes are kept.');
+ const snapshot=structuredClone(vis());
+ for(const b of snapshot){
+  if(!b.driveId){status('Uploading '+b.name+'…');const blob=await dbGet('files',b.id);if(!blob)throw new Error('Local PDF missing: '+b.name);await upload(b,blob);const current=books.find(x=>x.id===b.id);if(current)Object.assign(current,{driveId:b.driveId,owner:user.email,src:'mine'});}
+  for(const [page,link] of Object.entries(b.links||{}))if(link.audio){const blob=await dbGet('audio',link.audio);if(!blob&&!link.driveAudioId)throw new Error('Attached audio is missing for '+b.name);if(blob&&!link.driveAudioId){status('Uploading audio for '+b.name+'…');const file=await putFile({name:link.aname||'page-'+page+'-audio',parents:[folder]},blob);link.driveAudioId=file.id;const current=books.find(x=>x.id===b.id);if(current?.links?.[page]?.audio===link.audio){current.links[page].driveAudioId=file.id;await dbPut('books',current.id,current);}}}
+ }
+ // Detect edits made while PDFs and audio were uploading; save those in the next pass.
+ const before=JSON.stringify(vis());
+ const payload={version:1,folders:[...folders],dropped:[...dropped],books:snapshot.map(b=>{const {thumb,...record}=b;return record;})};
+ const saved=await putFile({name:'library.json',...(!existing?{parents:[folder]}:{})},new Blob([JSON.stringify(payload)],{type:'application/json'}),existing?.id);
+ cloudVersion=saved;await dbPut('meta','cloudVersion',saved);status('Saved to your Google Drive');
+ if(before!==JSON.stringify(vis())||JSON.stringify(snapshot.map(b=>[b.id,b.name,b.folder,b.last,b.links]))!==JSON.stringify(vis().map(b=>[b.id,b.name,b.folder,b.last,b.links])))setTimeout(scheduleCloud,0);
+ return snapshot.length;
+ }finally{syncing=0;acct();}
+}
+function validateManifest(data){
+ if(!data||data.version!==1||!Array.isArray(data.books)||!Array.isArray(data.folders)||data.books.length>2000)throw new Error('Invalid DCD Book library file.');
+ const ids=new Set();for(const b of data.books){if(!b||typeof b.id!=='string'||!/^[\w-]+$/.test(b.id)||ids.has(b.id)||typeof b.name!=='string'||typeof b.driveId!=='string'||!/^[\w-]+$/.test(b.driveId))throw new Error('Invalid book entry in Drive.');ids.add(b.id);if(b.links&&typeof b.links!=='object')throw new Error('Invalid page links.');for(const [page,link] of Object.entries(b.links||{})){if(!/^\d+$/.test(page)||!link||typeof link!=='object'||(link.driveAudioId&&!/^[\w-]+$/.test(link.driveAudioId))||(link.audio&&typeof link.audio!=='string'))throw new Error('Invalid audio or page link.');if(link.to&&(!Number.isInteger(link.to)||link.to<1))throw new Error('Invalid page destination.');}}
+ if(data.folders.some(f=>typeof f!=='string')||(data.dropped&&!Array.isArray(data.dropped)))throw new Error('Invalid folder data.');return data;
+}
+async function downloadBook(file){const url=file.mimeType?.startsWith('application/vnd.google-apps.')?`${GA}/${file.id}/export?mimeType=application/pdf`:`${GA}/${file.id}?alt=media&supportsAllDrives=true`;return new Blob([await(await gj(url)).blob()],{type:'application/pdf'});}
+async function restoreLibrary(say){
+ const folder=await root(),files=await listFiles(`'${q1(folder)}' in parents and name='library.json' and trashed=false`);
+ if(files.length>1)throw new Error('Multiple library.json files found. Keep one before loading.');
+ if(!files.length)return false;
+ const file=files[0],data=validateManifest(await(await gj(`${GA}/${file.id}?alt=media`)).json());
+ const staged=[];
+ for(const remote of data.books){say('Loading '+remote.name+'…');let local=books.find(b=>b.driveId===remote.driveId),blob=local&&await dbGet('files',local.id);
+ if(!blob){const meta=await(await gj(`${GA}/${remote.driveId}?fields=id,mimeType`)).json();blob=await downloadBook(meta);}
+ const extra={...remote,owner:remote.src==='default'?undefined:user.email};
+ // Generate a local cover without committing anything until every file is available.
+ const record=await preparePdf(blob,remote.name,remote.folder,extra);record.last=remote.last||1;record.links=remote.links||{};
+ const audios=[];for(const link of Object.values(record.links))if(link.driveAudioId){const audioBlob=await(await gj(`${GA}/${link.driveAudioId}?alt=media`)).blob();link.audio=link.audio||record.id+':'+link.driveAudioId;audios.push([link.audio,audioBlob]);}
+ staged.push({record,blob,audios});
+ }
+ const latest=await(await gj(`${GA}/${file.id}?fields=id,modifiedTime`)).json();if(latest.modifiedTime!==file.modifiedTime)throw new Error('Library changed during loading. Try again.');
+ const db=await DB;await new Promise((resolve,reject)=>{const t=db.transaction(['books','files','audio','meta'],'readwrite');for(const key of ['books','files','audio'])t.objectStore(key).clear();for(const item of staged){t.objectStore('books').put(item.record,item.record.id);t.objectStore('files').put(item.blob,item.record.id);for(const [id,blob] of item.audios)t.objectStore('audio').put(blob,id);}t.objectStore('meta').put(data.folders,'folders');t.objectStore('meta').put(data.dropped||[],'dropped');t.objectStore('meta').put(latest,'cloudVersion');t.oncomplete=resolve;t.onerror=()=>reject(t.error);t.onabort=()=>reject(t.error);});
+ books=staged.map(x=>x.record);folders=data.folders;dropped=data.dropped||[];cloudVersion=latest;return true;
+}
+async function syncDrive(say=()=>{},interactive=true,includeDefault=false){
+ if(accountLock())return 0;clearTimeout(cloudTimer);accountBusy=true;acct();
+ try{await signIn(interactive,includeDefault);syncing=1;accountBusy=false;acct();
+ const hadLocal=vis().length>0;
+ if(!hadLocal)await restoreLibrary(say);
+ let items=await walk(await root(),'',[],true);
+ if(includeDefault&&readAllowed){try{items=items.concat(await walk(DEFAULT_FOLDER,DEFAULT_NAME,[],false));}catch(error){toast('Shared library: '+error.message);}}
+ items=items.filter(x=>!books.some(b=>b.driveId===x.f.id)&&!dropped.includes(x.f.id));let count=0;
+ for(const {f,path,mine} of items){say('Importing '+f.name+'…');const blob=await downloadBook(f);if(path&&!folders.includes(path)){folders.push(path);await dbPut('meta','folders',folders);}await addPdf(blob,f.name,path,mine?{driveId:f.id,owner:user.email,src:'mine'}:{driveId:f.id,src:'default'});count++;}
+ status('Connected — '+count+' new book(s); device edits kept');return count;
+ }finally{syncing=0;accountBusy=false;acct();}
+}
+async function loadCloudLibrary(){
+ if(accountLock())return;if(!user)return toast('Sign in with Google first.');
+ if(!confirm('Load the saved Drive library? This replaces this account’s device library, progress and page links.'))return;
+ if(B)closeBook();clearTimeout(cloudTimer);syncing=1;acct();
+ try{const loaded=await restoreLibrary(status);status(loaded?'Loaded your Drive library':'No saved library.json yet. Use Save library first.');renderLib();}catch(error){status(error.message);toast(error.message);}finally{syncing=0;acct();}
+}
+async function importGuest(){
+ if(!user||accountLock())return;
+ if(!confirm('Copy books from this device’s guest library into your Google account library? The guest copies will stay on this device.'))return;
+ accountBusy=true;acct();const guest=await openBookDB('guest');
+ const get=(store,key,all=false)=>new Promise((resolve,reject)=>{const t=guest.transaction(store,'readonly'),r=all?t.objectStore(store).getAll():t.objectStore(store).get(key);r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});
+ try{const old=await get('books',null,true);for(const b of old.filter(x=>!x.owner)){
+ if(books.some(x=>x.importedGuest===b.id))continue;
+ const blob=await get('files',b.id);if(!blob)continue;const id='b'+crypto.randomUUID(),copy={...b,id,owner:user.email,src:'mine',importedGuest:b.id};delete copy.driveId;copy.links=structuredClone(b.links||{});
+ for(const [page,link] of Object.entries(copy.links))if(link.audio){const audio=await get('audio',link.audio);link.audio=id+':'+page;delete link.driveAudioId;if(audio)await dbPut('audio',link.audio,audio);else delete link.audio;}
+ await dbPut('books',id,copy);await dbPut('files',id,blob);books.push(copy);if(copy.folder&&!folders.includes(copy.folder))folders.push(copy.folder);
+ }await dbPut('meta','folders',folders);renderLib();status('Guest books copied — save library to upload them');}catch(error){toast(error.message);}finally{guest.close();accountBusy=false;acct();scheduleCloud();}
+}
+function settings(){
+ const m=modal(`<h3>Google Drive settings</h3><p style="margin:0">${user?esc(user.email):'Not signed in'}</p><p id="settings-status" class="settings-note">${esc(cloudState)}</p>
+ <label class="check-row"><input type="checkbox" id="auto-drive" ${autoEnabled()?'checked':''}> Automatically save library changes</label>
+ <div class="row"><button id="gsign">${user?'Reconnect Google':'Sign in with Google'}</button>${user?'<button id="gout">Sign out</button>':''}</div>
+ <div class="row"><button id="gsave" ${user?'':'disabled'}>Save library</button><button id="gload" ${user?'':'disabled'}>Load from Drive</button></div>
+ <button id="gshared">Load shared default library</button><small class="settings-note">Optional: reading the shared Drive folder requests broader, read-only Drive permission. Personal library saving uses access only to app-created files.</small>
+ <button id="gguest" ${user?'':'disabled'}>Import this device’s guest books</button>
+ <small class="settings-note">PDFs, page links, audio and reading progress save in “${MY_ROOT}” in your Drive. Sign out keeps cloud files and account-specific device copies. Deleting a book here does not delete its original Drive PDF.</small>
+ <a href="https://myaccount.google.com/connections" target="_blank" rel="noopener">Manage Google permissions ↗</a>
+ <details><summary>Site setup</summary><label>Google Client ID<input id="gcid" autocomplete="off" value="${esc(cid())}" placeholder="…apps.googleusercontent.com"></label><small class="settings-note">The site owner configures this public ID. This browser override is for testing; set GOOGLE_CLIENT_ID in the HTML for every visitor. Authorized JavaScript origin: ${esc(location.origin)}.</small><button id="gconfig">Save setup</button></details>
+ <div class="row"><button id="gclose">Close</button></div>`);
+ $('#gclose',m).onclick=()=>m.remove();$('#auto-drive',m).onchange=e=>{gset('dcd-auto:'+(user?.sub||'guest'),String(e.target.checked));if(e.target.checked)scheduleCloud();else clearTimeout(cloudTimer);};
+ $('#gconfig',m).onclick=()=>{if(accountLock())return toast('Wait until the current operation finishes.');if(user)return toast('Sign out before changing the Client ID.');const value=$('#gcid',m).value.trim();if(!/^\d+-[a-zA-Z0-9_-]+\.apps\.googleusercontent\.com$/.test(value))return toast('Enter a valid Google Client ID.');if(GOOGLE_CLIENT_ID&&value!==GOOGLE_CLIENT_ID)return toast('The site owner has configured the Client ID in the HTML.');gset('dcd-client-id',value);toast('Setup saved for this browser');};
+ $('#gsign',m).onclick=()=>{m.remove();$('#syn').click();};if($('#gout',m))$('#gout',m).onclick=()=>{m.remove();signOut();};
+ $('#gsave',m).onclick=()=>{m.remove();saveLibrary().catch(error=>{status(error.message);toast(error.message);});};$('#gload',m).onclick=()=>{m.remove();loadCloudLibrary();};
+ $('#gshared',m).onclick=()=>{m.remove();syncDrive(status,true,true).catch(error=>{status(error.message);toast(error.message);});};$('#gguest',m).onclick=()=>{m.remove();importGuest();};
+}
+$('#syn').onclick=()=>{if(!cid()){toast('Open Settings → Site setup to add DCD Book’s Client ID.');return settings();}syncDrive(status,true).catch(error=>{status(error.message);toast(error.message);});};
+$('#usr').onclick=$('#settings').onclick=settings;$('#signout').onclick=signOut;
+
+
+/* ---------- quick open (fuzzy) ---------- */
+const lev=(a,b)=>{const d=[...Array(b.length+1).keys()];for(let i=1;i<=a.length;i++){let p=d[0];d[0]=i;for(let j=1;j<=b.length;j++){const t=d[j];d[j]=Math.min(d[j]+1,d[j-1]+1,p+(a[i-1]===b[j-1]?0:1));p=t}}return d[b.length]};
+const norm=s=>s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim();
+function score(q,name){const n=norm(name);let b=n.includes(q)?.85+(n.startsWith(q)?.1:0):0;b=Math.max(b,1-lev(q,n)/Math.max(q.length,n.length));const w=n.split(' ');
+  for(let i=0;i<w.length;i++)for(let k=1;k<=3&&i+k<=w.length;k++){const c=w.slice(i,i+k).join(' ');b=Math.max(b,.95*(1-lev(q,c)/Math.max(q.length,c.length)))}return b}
+function parseQ(v){const m=v.match(/^(.*?)(?:\s+(?:p|pg|page|trang)\.?)?[\s,:#.-]*(\d+)\s*$/i);return m?{q:norm(m[1]),page:+m[2]}:{q:norm(v),page:null}}
+let sugList=[],sugI=0;
+function suggest(){const {q,page}=parseQ($('#qj').value),box=$('#sug');
+  if(!q){box.hidden=true;sugList=[];return}
+  sugList=vis().map(b=>({b,s:score(q,b.name)})).filter(x=>x.s>.35).sort((a,b)=>b.s-a.s).slice(0,5).map(x=>({b:x.b,page}));sugI=0;
+  box.hidden=false;box.innerHTML=sugList.length?sugList.map((x,i)=>`<div data-i="${i}" class="${i?'':'on'}">📖 ${esc(x.b.name)} <small style="color:var(--muted)">→ p.${x.page||x.b.last||1}</small></div>`).join(''):'<div style="color:var(--muted)">No close match</div>'}
+$('#qj').oninput=suggest;
+$('#qj').onkeydown=e=>{
+  if(e.key==='ArrowDown'||e.key==='ArrowUp'){e.preventDefault();sugI=(sugI+(e.key==='ArrowDown'?1:-1)+sugList.length)%(sugList.length||1);[...$('#sug').children].forEach((c,i)=>c.classList.toggle('on',i===sugI))}
+  if(e.key==='Enter'&&sugList[sugI]){const x=sugList[sugI];$('#qj').value='';$('#sug').hidden=true;openBook(x.b.id,x.page)}
+  if(e.key==='Escape')$('#sug').hidden=true};
+$('#sug').onmousedown=e=>{const d=e.target.closest('[data-i]');if(d){const x=sugList[+d.dataset.i];$('#qj').value='';$('#sug').hidden=true;openBook(x.b.id,x.page)}};
+$('#qj').onblur=()=>setTimeout(()=>$('#sug').hidden=true,150);
+
+/* ---------- reader ---------- */
+let B,pdf,N,maxS,s=0,busy=0,ret=[],cache=new Map(),audio=null;
+const L=$('#L'),R=$('#R'),book=$('#book');
+const pagesOf=k=>k===0?[0,1]:[2*k,2*k+1<=N?2*k+1:0];
+const spreadOf=p=>p<=1?0:Math.floor(p/2);
+async function img(n){if(n<1||n>N)return '';if(cache.has(n))return cache.get(n);
+  const p=await pdf.getPage(n),v0=p.getViewport({scale:1}),v=p.getViewport({scale:Math.min(1500/v0.height,3)}),c=document.createElement('canvas');
+  c.width=v.width;c.height=v.height;await p.render({canvasContext:c.getContext('2d'),viewport:v}).promise;
+  const u=c.toDataURL('image/jpeg',.88);cache.set(n,u);if(cache.size>24)cache.delete(cache.keys().next().value);return u}
+const pic=u=>u?`<img src="${u}">`:'';
+function bad(n){const k=(B.links||{})[n];if(!k)return '';return `<div class="bd">${k.to?`<button data-j="${k.to}">↪ p.${k.to}</button>`:''}${k.audio?`<button data-a="${n}">♪</button>`:''}</div>`}
+function fill(el,n,src){el.classList.toggle('empty',!n);
+  el.innerHTML=n?`<img src="${src}" draggable="false"><i class="pn">${n}</i>${bad(n)}<div class="cz"><div class="cc"><div class="cut"></div><div class="fold"></div></div></div>`:''}
+function shift(l,r){book.style.transform=`translateX(${l&&r?0:l?'25%':'-25%'})`;book.classList.toggle('single',!(l&&r))}
+function ui(){const [l,r]=pagesOf(s);$('#pn').value=l||r;$('#tot').textContent='/ '+N;$('#ret').hidden=!ret.length;book.classList.toggle('last',s===maxS);
+  B.last=l||r;saveBook(B)}
+async function setStatic(k){const [l,r]=pagesOf(k),[a,b]=await Promise.all([img(l),img(r)]);fill(L,l,a);fill(R,r,b);shift(l,r);ui();pre(k)}
+function pre(k){[k-1,k+1].forEach(x=>{if(x>=0&&x<=maxS)pagesOf(x).forEach(p=>p&&img(p))})}
+function stopAudio(){if(audio){audio.pause();audio=null}}
+async function go(ns){
+  ns=Math.max(0,Math.min(maxS,ns));if(busy||ns===s||!B)return;busy=1;stopAudio();
+  const [ol,or]=pagesOf(s),[nl,nr]=pagesOf(ns),[iol,ior,inl,inr]=await Promise.all([ol,or,nl,nr].map(img)),fwd=ns>s;
+  const f=document.createElement('div');f.className='flip '+(fwd?'f':'b');
+  f.innerHTML=`<div class="face">${pic(fwd?ior:iol)}</div><div class="face bk">${pic(fwd?inl:inr)}</div>`;
+  if(fwd)fill(R,nr,inr);else fill(L,nl,inl);
+  book.append(f);shift(nl,nr);f.offsetWidth;f.classList.add('go');
+  setTimeout(()=>{f.remove();fill(L,nl,inl);fill(R,nr,inr);s=ns;busy=0;ui();pre(ns)},880);
+}
+function layout(){const st=$('#stage');if(!B)return;const aw=st.clientWidth*.94,ah=st.clientHeight*.94,ph=Math.min(ah,aw/(2*B.aspect));
+  book.style.setProperty('--ph',ph+'px');book.style.setProperty('--pw',ph*B.aspect+'px')}
+addEventListener('resize',layout);
+async function openBook(id,page){
+  B=vis().find(b=>b.id===id);if(!B)return;B.links=B.links||{};
+  try{const f=await dbGet('files',id);pdf=await pdfjsLib.getDocument({data:await f.arrayBuffer()}).promise}catch(e){toast('Could not open this book');return}
+  N=pdf.numPages;maxS=Math.floor(N/2);cache.clear();ret=[];busy=0;stopAudio();
+  $('#ttl').textContent=B.name;$('#pn').max=N;$('#lib').classList.remove('show');$('#rdr').classList.add('show');layout();
+  s=spreadOf(Math.min(Math.max(page||B.last||1,1),N));book.style.transition='none';await setStatic(s);book.offsetWidth;book.style.transition='';
+}
+function closeBook(){stopAudio();if(B){saveBook(B)}B=null;pdf=null;$('#rdr').classList.remove('show');$('#lib').classList.add('show');renderLib()}
+$('#back').onclick=closeBook;
+$('#next').onclick=()=>go(s+1);$('#prev').onclick=()=>go(s-1);
+$('#pn').onkeydown=e=>{if(e.key==='Enter'){const p=Math.min(Math.max(+e.target.value||1,1),N);go(spreadOf(p));e.target.blur()}};
+$('#ret').onclick=()=>{const k=ret.pop();go(k)};
+book.onclick=e=>{
+  const j=e.target.closest('[data-j]'),a=e.target.closest('[data-a]');
+  if(j){ret.push(s);go(spreadOf(+j.dataset.j));setTimeout(ui,900);return}
+  if(a){toggleAudio(a.dataset.a);return}
+  if(e.target.closest('.pg.r'))go(s+1);else if(e.target.closest('.pg.l'))go(s-1)};
+async function toggleAudio(n){if(audio){const same=audio._n===n;stopAudio();if(same)return}
+  const k=B.links[n];if(!k||!k.audio)return;const bl=await dbGet('audio',k.audio);if(!bl)return toast('Audio file missing');
+  audio=new Audio(URL.createObjectURL(bl));audio._n=n;audio.play().catch(()=>{});audio.onended=()=>audio=null}
+addEventListener('keydown',e=>{if(!B||document.querySelector('.mdl')||e.target.matches('input,select,textarea'))return;
+  if(e.key==='ArrowRight')go(s+1);if(e.key==='ArrowLeft')go(s-1);if(e.key==='Escape')closeBook()});
+addEventListener('beforeunload',()=>{if(B)saveBook(B)});
+
+/* ---------- page links ---------- */
+$('#lnk').onclick=()=>{if(accountLock())return toast('Wait for sync to finish.');
+  const ps=pagesOf(s).filter(Boolean);
+  const m=modal(`<h3>Link a page</h3><label>This page<select id="lp">${ps.map(p=>`<option>${p}</option>`).join('')}</select></label><label>Connect to page (optional, e.g. answer key)<input id="lt" type="number" min="1" max="${N}"></label><label>Audio file (optional) <span id="ln"></span><input id="la" type="file" accept="audio/*"></label><div class="row"><button id="lr">Remove link</button><button id="lc">Cancel</button><button class="pri" id="ls">Save</button></div>`);
+  const load=()=>{const k=B.links[$('#lp',m).value]||{};$('#lt',m).value=k.to||'';$('#ln',m).textContent=k.aname?'— current: '+k.aname:''};load();$('#lp',m).onchange=load;
+  $('#lc',m).onclick=()=>m.remove();
+  $('#lr',m).onclick=async()=>{const p=$('#lp',m).value,k=B.links[p];if(k&&k.audio)await dbDel('audio',k.audio);delete B.links[p];await done()};
+  $('#ls',m).onclick=async()=>{const p=$('#lp',m).value,old=B.links[p]||{},to=Math.min(+$('#lt',m).value||0,N),file=$('#la',m).files[0];let audio=old.audio||null,aname=old.aname||'';
+    if(file){audio=B.id+':'+p;aname=file.name;try{await dbPut('audio',audio,file)}catch(e){toast('Could not save audio')}}
+    if(!to&&!audio)delete B.links[p];else B.links[p]={to,audio,aname};await done()};
+  async function done(){saveBook(B);m.remove();const [l,r]=pagesOf(s);fill(L,l,await img(l));fill(R,r,await img(r));toast('Saved')}
+};
+
+/* ---------- boot ---------- */
+(async()=>{try{books=await dbAll('books');folders=(await dbGet('meta','folders'))||[];dropped=(await dbGet('meta','dropped'))||[];}catch(error){toast('Device storage unavailable: '+error.message);}acct();})();
+// Google access is requested only after a user clicks Sign in or Sync.
+function showLegal(){const key=location.hash.slice(1);document.body.dataset.legal=['privacy','terms'].includes(key)?key:'';}
+addEventListener('hashchange',showLegal);showLegal();
+</script>
+</body>
+</html>
