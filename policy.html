@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Privacy Policy · Flipbook</title>
+<style>
+:root{--bg:#f4f1ea;--panel:#fff;--ink:#2b2823;--muted:#7a746a;--line:#ddd6c8;--accent:#c0603a;color-scheme:light}
+:root[data-theme=dark]{--bg:#17171a;--panel:#232327;--ink:#ececec;--muted:#9a9aa2;--line:#37373d;--accent:#e58c62;color-scheme:dark}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.65 system-ui,-apple-system,"Segoe UI",sans-serif}
+.wrap{max-width:780px;margin:0 auto;padding:28px 20px 64px}
+nav{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-bottom:18px;font-size:14px}nav a{color:var(--accent);text-decoration:none}nav a:hover{text-decoration:underline}nav .sp{flex:1}
+nav button{background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:5px 12px;font:inherit;cursor:pointer}
+article{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:28px 30px}
+h1{margin:0 0 4px;font-size:28px}h2{margin:30px 0 8px;font-size:19px}p,li{margin:8px 0}ul{padding-left:22px}
+.meta{color:var(--muted);font-size:14px;margin-bottom:18px}mark{background:#ffe08a;color:#2b2823;padding:0 4px;border-radius:4px}
+table{border-collapse:collapse;width:100%;font-size:15px;margin:10px 0}th,td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}th{background:var(--bg)}
+a{color:var(--accent)}
+</style></head>
+<body><div class="wrap">
+<nav><a href="./">← Back to library</a><a href="terms.html">Terms of Service</a><span class="sp"></span><button onclick="tg()" aria-label="Toggle dark mode">☀️ / 🌙</button></nav>
+<article>
+<h1>Privacy Policy</h1>
+<div class="meta">Effective date: October 15, 2026</div>
+<p>Flipbook (“the app”, “we”, “us”) is operated by <mark>[OPERATOR NAME]</mark> and available at <mark>[SITE URL]</mark>. It is a PDF reader that shows your books as a flipbook. This policy explains what information the app handles and why. If something here is unclear, contact us at <mark>[CONTACT EMAIL]</mark>.</p>
+
+<h2>1. The short version</h2>
+<ul>
+<li>Your books, folders, notes about page links, audio files and reading progress are stored <strong>in your own browser</strong>. We do not run a server that receives them.</li>
+<li>If you sign in with Google, the app uses your Google account to load a shared default library and to save the PDFs you import into <strong>your own Google Drive</strong>.</li>
+<li>We do not sell your data, show ads, or use analytics or tracking tools in the app.</li>
+</ul>
+
+<h2>2. Information the app handles</h2>
+<table>
+<tr><th>Information</th><th>Where it lives</th><th>Why</th></tr>
+<tr><td>PDFs you import, their cover thumbnails, names, folders, page links, linked audio files and last-read page</td><td>Your browser (IndexedDB) on your device</td><td>To show your library and reopen books where you left off</td></tr>
+<tr><td>Theme choice (light/dark) and a “signed in” marker</td><td>Your browser (local storage)</td><td>To remember your settings and re-connect to Google quietly</td></tr>
+<tr><td>Google account name and email address (if you sign in)</td><td>Name shown on screen from memory; your email is also stored with your books in your browser</td><td>To show who is signed in and to keep different accounts’ books separate on a shared device</td></tr>
+<tr><td>Google access token (if you sign in)</td><td>Page memory only; not saved, and gone when you close or reload the page</td><td>To make Drive requests on your behalf</td></tr>
+<tr><td>PDFs you save to Google Drive</td><td>A “Flipbook Library” folder in your Google Drive</td><td>So your books follow you to other devices</td></tr>
+</table>
+<p>We do not collect this information on our own servers. Because the app runs in your browser, we cannot see your books or your Drive files.</p>
+
+<h2>3. Google sign-in and Google user data</h2>
+<p>When you choose “Sign in”, the app asks Google for the following permissions:</p>
+<ul>
+<li><strong>Basic profile (openid, email, profile):</strong> to show your name and tell accounts apart.</li>
+<li><strong>Google Drive, read-only:</strong> to read the shared default library folder and the “Flipbook Library” folder in your own Drive, and download the PDFs inside them. The app only looks in those folders.</li>
+<li><strong>Google Drive, files created by this app:</strong> to create the “Flipbook Library” folder (and subfolders that match your library folders) and upload the PDFs you import.</li>
+</ul>
+<p>Files downloaded from Drive are copied into your browser so they open quickly and work offline. The app does not read, change or delete any other files in your Drive, and it does not delete files from Drive at all.</p>
+<p>The app’s use and transfer of information received from Google APIs adheres to the <a href="https://developers.google.com/terms/api-services-user-data-policy" target="_blank" rel="noopener">Google API Services User Data Policy</a>, including the Limited Use requirements. In particular, we use Google user data only to provide the features described above; we do not transfer it to others except as needed to run the app or comply with law; we do not use it for advertising; and no person reads your data except where you ask us to, for security, or where the law requires.</p>
+
+<h2>4. Third-party services</h2>
+<ul>
+<li><strong>Google</strong> provides sign-in and Google Drive. Their handling of your data is governed by the <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">Google Privacy Policy</a>.</li>
+<li><strong>cdnjs (Cloudflare)</strong> delivers the open-source PDF.js library the app uses to display PDFs. Your browser contacts it when the app loads, so it can see your IP address and standard request details.</li>
+<li><strong>Our hosting provider</strong> (<mark>[HOSTING PROVIDER]</mark>) may keep standard server logs, such as IP address and time of visit, when you load the site.</li>
+</ul>
+
+<h2>5. Sharing</h2>
+<p>We do not sell or rent personal information, and we do not share it with advertisers. Information is shared only with the services listed above to make the app work, or if the law requires it.</p>
+
+<h2>6. Retention and your choices</h2>
+<ul>
+<li><strong>Delete local data:</strong> remove a book from the library, or clear this site’s data in your browser settings, to erase books, thumbnails, links and audio from the device.</li>
+<li><strong>Sign out:</strong> choose your name, then “Sign out”, to end the session and revoke the token.</li>
+<li><strong>Revoke access:</strong> manage or remove the app’s permission any time at <a href="https://myaccount.google.com/permissions" target="_blank" rel="noopener">myaccount.google.com/permissions</a>.</li>
+<li><strong>Delete Drive copies:</strong> delete the “Flipbook Library” folder, or individual files, in Google Drive. Removing a book inside the app does not delete it from Drive.</li>
+</ul>
+<p>Because we hold no copies of your data on our servers, there is nothing for us to export or erase on our side. If you think we hold something about you anyway, write to <mark>[CONTACT EMAIL]</mark>.</p>
+
+<h2>7. Security</h2>
+<p>Data stays on your device and in your own Google account, and the app talks to Google over encrypted connections. No method of storage or transmission is perfectly secure, and anyone with access to your device or browser profile can see the books stored there. Use a private device or profile for sensitive documents.</p>
+
+<h2>8. Children</h2>
+<p>The app is not directed to children under 13, and we do not knowingly collect personal information from them. Google accounts have their own age requirements.</p>
+
+<h2>9. Changes</h2>
+<p>We may update this policy. The effective date above shows the latest version, and material changes will be noted on this page.</p>
+
+<h2>10. Contact</h2>
+<p><mark>[OPERATOR NAME]</mark> · <mark>[CONTACT EMAIL]</mark> · <mark>[POSTAL ADDRESS, optional]</mark></p>
+<p>See also our <a href="terms.html">Terms of Service</a>.</p>
+</article></div>
+<script>try{if(localStorage.getItem('fb-theme')==='dark')document.documentElement.dataset.theme='dark'}catch(e){}
+function tg(){const d=document.documentElement;const n=d.dataset.theme==='dark'?'light':'dark';d.dataset.theme=n;try{localStorage.setItem('fb-theme',n)}catch(e){}}</script></body></html>
