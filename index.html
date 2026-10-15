@@ -83,6 +83,8 @@ input,select,textarea{background:var(--panel);border:1px solid var(--line);borde
 
 
 .connection-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#929292;flex:none}.connection-dot[data-state=connected]{background:#36a768}.connection-dot[data-state=disconnected]{background:#d95353}.connection-dot[data-state=signed-out]{background:#929292}#usr{display:inline-flex;align-items:center;gap:8px;max-width:220px}#usr[hidden],#syn[hidden],#signout[hidden]{display:none!important}#usr>span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+.audio-dock{padding:10px 14px;background:var(--stage);display:flex;justify-content:center}.audio-pill{width:min(100%,460px);display:flex;align-items:center;gap:12px;border:1px solid var(--line);border-radius:50px;background:var(--panel);padding:12px 18px;box-shadow:0 5px 18px #0001}.audio-headphones{width:22px;height:22px;flex:none;fill:none;stroke:currentColor;stroke-width:2}.audio-pill button{min-width:42px;min-height:42px;border:0;border-radius:50%;background:var(--bg);padding:8px}.audio-pill .audio-play{background:var(--accent);color:#fff}.audio-timeline{flex:1;min-width:0}.audio-timeline input{display:block;width:100%;padding:0;height:22px;accent-color:var(--accent);border:0}.audio-times{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}.audio-dock[hidden]{display:none}@media(max-width:400px){.audio-pill{gap:8px;padding:10px 12px}.audio-headphones{width:18px;height:18px}}
 </style>
 </head>
 <body>
@@ -118,6 +120,12 @@ input,select,textarea{background:var(--panel);border:1px solid var(--line);borde
     <button class="th" aria-label="Toggle dark mode"><span>☀️</span><span>🌙</span><b></b></button>
   </div>
   <div class="stage" id="stage"><div class="persp"><div class="book single" id="book"><div class="pg l empty" id="L"></div><div class="pg r empty" id="R"></div></div></div></div>
+  <div class="audio-dock" id="audio-dock" hidden><div class="audio-pill" role="group" aria-label="Book audio">
+    <svg class="audio-headphones" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 14v-3a9 9 0 0 1 18 0v3M3 13h4v8H5a2 2 0 0 1-2-2zm18 0h-4v8h2a2 2 0 0 0 2-2z"/></svg>
+    <button class="audio-play" id="audio-play" aria-label="Play audio">▶</button>
+    <div class="audio-timeline"><input id="audio-seek" type="range" min="0" max="0" step="0.1" value="0" aria-label="Audio position" disabled><div class="audio-times"><span id="audio-current">0:00</span><span id="audio-duration">0:00</span></div></div>
+    <button id="audio-speed" aria-label="Playback speed: 1 times">1×</button>
+  </div></div>
 </section>
 
 <section class="legal" id="privacy"><nav><a href="#">← PDF Flip</a> · <a href="terms.html">Terms</a></nav><h1>PDF Flip — Privacy Policy</h1><p>Effective date: 15 October 2026</p>
@@ -448,10 +456,18 @@ function fill(el,n,src){el.classList.toggle('empty',!n);
   el.innerHTML=n?`<img src="${src}" draggable="false"><i class="pn">${n}</i>${bad(n)}<div class="cz"><div class="cc"><div class="cut"></div><div class="fold"></div></div></div>`:''}
 function shift(l,r){book.style.transform=`translateX(${l&&r?0:l?'25%':'-25%'})`;book.classList.toggle('single',!(l&&r))}
 function ui(){const [l,r]=pagesOf(s);$('#pn').value=l||r;$('#tot').textContent='/ '+N;$('#ret').hidden=!ret.length;book.classList.toggle('last',s===maxS);
-  B.last=l||r;saveBook(B)}
+  B.last=l||r;saveBook(B);refreshAudioPlayer()}
 async function setStatic(k){const [l,r]=pagesOf(k),[a,b]=await Promise.all([img(l),img(r)]);fill(L,l,a);fill(R,r,b);shift(l,r);ui();pre(k)}
 function pre(k){[k-1,k+1].forEach(x=>{if(x>=0&&x<=maxS)pagesOf(x).forEach(p=>p&&img(p))})}
-function stopAudio(){if(audio){audio.pause();audio=null}}
+let audioRequest=0,audioRate=1;
+function audioTime(t){t=Number.isFinite(t)?Math.max(0,Math.floor(t)):0;return Math.floor(t/60)+':'+String(t%60).padStart(2,'0')}
+function updateAudioControls(){const a=audio,d=Number.isFinite(a?.duration)?a.duration:0;$('#audio-play').textContent=a&&!a.paused?'Ⅱ':'▶';$('#audio-play').setAttribute('aria-label',a&&!a.paused?'Pause audio':'Play audio');$('#audio-seek').max=d;$('#audio-seek').disabled=!d;$('#audio-seek').value=a?.currentTime||0;$('#audio-current').textContent=audioTime(a?.currentTime||0);$('#audio-duration').textContent=audioTime(d)}
+function stopAudio(){audioRequest++;if(audio){audio.pause();URL.revokeObjectURL(audio.src);audio.removeAttribute('src');audio.load();audio=null}updateAudioControls()}
+function refreshAudioPlayer(){const available=B?pagesOf(s).filter(p=>p&&B.links?.[p]?.audio):[];$('#audio-dock').hidden=!available.length;if(!available.length){stopAudio();return}if(!audio||!available.some(p=>String(p)===audio._n))loadPageAudio(available[0],false);layout()}
+async function loadPageAudio(n,autoplay){stopAudio();const request=audioRequest,owner=B,key=owner?.links?.[n]?.audio;if(!key)return;const bl=await dbGet('audio',key);if(request!==audioRequest||B!==owner)return;if(!bl){$('#audio-dock').hidden=true;return toast('Audio file missing')}const a=new Audio(URL.createObjectURL(bl));audio=a;a._n=String(n);a.preload='metadata';a.playbackRate=audioRate;['loadedmetadata','durationchange','timeupdate','play','pause','ended'].forEach(event=>a.addEventListener(event,()=>{if(audio===a)updateAudioControls()}));a.addEventListener('error',()=>{if(audio===a)toast('Could not play this audio file')});updateAudioControls();if(autoplay)a.play().catch(()=>toast('Tap Play to start audio'))}
+$('#audio-play').onclick=()=>{if(!audio)return;if(audio.paused)audio.play().catch(()=>toast('Could not play this audio file'));else audio.pause()};
+$('#audio-seek').oninput=e=>{if(audio&&Number.isFinite(audio.duration)){audio.currentTime=Math.min(audio.duration,+e.target.value);updateAudioControls()}};
+$('#audio-speed').onclick=()=>{audioRate=audioRate===1?2:1;if(audio)audio.playbackRate=audioRate;$('#audio-speed').textContent=audioRate+'×';$('#audio-speed').setAttribute('aria-label','Playback speed: '+audioRate+' times')};
 async function go(ns){
   ns=Math.max(0,Math.min(maxS,ns));if(busy||ns===s||!B)return;busy=1;stopAudio();
   const [ol,or]=pagesOf(s),[nl,nr]=pagesOf(ns),[iol,ior,inl,inr]=await Promise.all([ol,or,nl,nr].map(img)),fwd=ns>s;
@@ -471,7 +487,7 @@ async function openBook(id,page){
   $('#ttl').textContent=B.name;$('#pn').max=N;$('#lib').classList.remove('show');$('#rdr').classList.add('show');layout();
   s=spreadOf(Math.min(Math.max(page||B.last||1,1),N));book.style.transition='none';await setStatic(s);book.offsetWidth;book.style.transition='';
 }
-function closeBook(){stopAudio();if(B){saveBook(B)}B=null;pdf=null;$('#rdr').classList.remove('show');$('#lib').classList.add('show');renderLib()}
+function closeBook(){stopAudio();if(B){saveBook(B)}B=null;pdf=null;$('#audio-dock').hidden=true;$('#rdr').classList.remove('show');$('#lib').classList.add('show');renderLib()}
 $('#back').onclick=closeBook;
 $('#next').onclick=()=>go(s+1);$('#prev').onclick=()=>go(s-1);
 $('#pn').onkeydown=e=>{if(e.key==='Enter'){const p=Math.min(Math.max(+e.target.value||1,1),N);go(spreadOf(p));e.target.blur()}};
@@ -481,9 +497,7 @@ book.onclick=e=>{
   if(j){ret.push(s);go(spreadOf(+j.dataset.j));setTimeout(ui,900);return}
   if(a){toggleAudio(a.dataset.a);return}
   if(e.target.closest('.pg.r'))go(s+1);else if(e.target.closest('.pg.l'))go(s-1)};
-async function toggleAudio(n){if(audio){const same=audio._n===n;stopAudio();if(same)return}
-  const k=B.links[n];if(!k||!k.audio)return;const bl=await dbGet('audio',k.audio);if(!bl)return toast('Audio file missing');
-  audio=new Audio(URL.createObjectURL(bl));audio._n=n;audio.play().catch(()=>{});audio.onended=()=>audio=null}
+async function toggleAudio(n){if(audio&&audio._n===String(n)){$('#audio-play').click();return}await loadPageAudio(n,true)}
 addEventListener('keydown',e=>{if(!B||document.querySelector('.mdl')||e.target.matches('input,select,textarea'))return;
   if(e.key==='ArrowRight')go(s+1);if(e.key==='ArrowLeft')go(s-1);if(e.key==='Escape')closeBook()});
 addEventListener('beforeunload',()=>{if(B)saveBook(B)});
@@ -498,7 +512,7 @@ $('#lnk').onclick=()=>{if(accountLock())return toast('Wait for sync to finish.')
   $('#ls',m).onclick=async()=>{const p=$('#lp',m).value,old=B.links[p]||{},to=Math.min(+$('#lt',m).value||0,N),file=$('#la',m).files[0];let audio=old.audio||null,aname=old.aname||'';
     if(file){audio=B.id+':'+p;aname=file.name;try{await dbPut('audio',audio,file)}catch(e){toast('Could not save audio')}}
     if(!to&&!audio)delete B.links[p];else B.links[p]={to,audio,aname};await done()};
-  async function done(){saveBook(B);m.remove();const [l,r]=pagesOf(s);fill(L,l,await img(l));fill(R,r,await img(r));toast('Saved')}
+  async function done(){saveBook(B);m.remove();const [l,r]=pagesOf(s);fill(L,l,await img(l));fill(R,r,await img(r));stopAudio();refreshAudioPlayer();toast('Saved')}
 };
 
 /* ---------- boot ---------- */
