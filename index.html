@@ -84,7 +84,7 @@ input,select,textarea{background:var(--panel);border:1px solid var(--line);borde
 
 .connection-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#929292;flex:none}.connection-dot[data-state=connected]{background:#36a768}.connection-dot[data-state=disconnected]{background:#d95353}.connection-dot[data-state=signed-out]{background:#929292}#usr{display:inline-flex;align-items:center;gap:8px;max-width:220px}#usr[hidden],#syn[hidden],#signout[hidden]{display:none!important}#usr>span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
-.audio-dock{padding:10px 14px;background:var(--stage);display:flex;justify-content:center}.audio-pill{width:min(100%,460px);display:flex;align-items:center;gap:12px;border:1px solid var(--line);border-radius:50px;background:var(--panel);padding:12px 18px;box-shadow:0 5px 18px #0001}.audio-headphones{width:22px;height:22px;flex:none;fill:none;stroke:currentColor;stroke-width:2}.audio-pill button{min-width:42px;min-height:42px;border:0;border-radius:50%;background:var(--bg);padding:8px}.audio-pill .audio-play{background:var(--accent);color:#fff}.audio-timeline{flex:1;min-width:0}.audio-timeline input{display:block;width:100%;padding:0;height:22px;accent-color:var(--accent);border:0}.audio-times{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}.audio-dock[hidden]{display:none}@media(max-width:400px){.audio-pill{gap:8px;padding:10px 12px}.audio-headphones{width:18px;height:18px}}
+.audio-dock{padding:10px 14px;background:var(--stage);display:flex;justify-content:center}.audio-pill{width:min(100%,460px);display:flex;align-items:center;gap:12px;border:1px solid var(--line);border-radius:50px;background:var(--panel);padding:12px 18px;box-shadow:0 5px 18px #0001}.audio-headphones{width:22px;height:22px;flex:none;fill:none;stroke:currentColor;stroke-width:2}.audio-pill button{min-width:42px;min-height:42px;border:0;border-radius:50%;background:var(--bg);padding:8px}.audio-pill .audio-play{background:var(--accent);color:#fff}.audio-timeline{flex:1;min-width:0}.audio-timeline input{display:block;width:100%;padding:0;height:22px;accent-color:var(--accent);border:0}#audio-track{width:100%;padding:2px 6px;font-size:12px;margin-bottom:4px}#audio-track[hidden]{display:none}.audio-times{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}.audio-dock[hidden]{display:none}@media(max-width:400px){.audio-pill{gap:8px;padding:10px 12px}.audio-headphones{width:18px;height:18px}}
 </style>
 </head>
 <body>
@@ -123,7 +123,7 @@ input,select,textarea{background:var(--panel);border:1px solid var(--line);borde
   <div class="audio-dock" id="audio-dock" hidden><div class="audio-pill" role="group" aria-label="Book audio">
     <svg class="audio-headphones" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 14v-3a9 9 0 0 1 18 0v3M3 13h4v8H5a2 2 0 0 1-2-2zm18 0h-4v8h2a2 2 0 0 0 2-2z"/></svg>
     <button class="audio-play" id="audio-play" aria-label="Play audio">▶</button>
-    <div class="audio-timeline"><input id="audio-seek" type="range" min="0" max="0" step="0.1" value="0" aria-label="Audio position" disabled><div class="audio-times"><span id="audio-current">0:00</span><span id="audio-duration">0:00</span></div></div>
+    <div class="audio-timeline"><select id="audio-track" aria-label="Choose audio track" hidden></select><input id="audio-seek" type="range" min="0" max="0" step="0.1" value="0" aria-label="Audio position" disabled><div class="audio-times"><span id="audio-current">0:00</span><span id="audio-duration">0:00</span></div></div>
     <button id="audio-speed" aria-label="Playback speed: 1 times">1×</button>
   </div></div>
 </section>
@@ -156,6 +156,7 @@ let DB=openBookDB('guest');
 const tx=async(s,m,f)=>{const d=await DB;return new Promise((res,rej)=>{const t=d.transaction(s,m),q=f(t.objectStore(s));t.oncomplete=()=>res(q&&q.result);t.onerror=()=>rej(t.error)})};
 const dbGet=(s,k)=>tx(s,'readonly',o=>o.get(k)),dbPut=(s,k,v)=>tx(s,'readwrite',o=>o.put(v,k)),dbDel=(s,k)=>tx(s,'readwrite',o=>o.delete(k)),dbAll=s=>tx(s,'readonly',o=>o.getAll());
 let books=[],folders=[],dropped=[],hiddenDefaultFolders=[];
+function audioTracks(link){return Array.isArray(link?.audios)?link.audios:link&&(link.audio||link.driveAudioId)?[link]:[]}
 const saveBook=async b=>{try{await dbPut('books',b.id,b);scheduleCloud();}catch(error){toast('Device save failed: '+error.message);}};
 const saveFolders=async()=>{try{await dbPut('meta','folders',folders);scheduleCloud();}catch(error){toast('Device save failed: '+error.message);}};
 const toast=m=>{const t=document.createElement('div');t.className='toast';t.textContent=m;document.body.append(t);setTimeout(()=>t.remove(),2200)};
@@ -183,7 +184,7 @@ function editBook(b){
   $('#ec',m).onclick=()=>m.remove();
   $('#es',m).onclick=()=>{b.name=$('#en',m).value.trim()||b.name;b.folder=$('#ef',m).value;saveBook(b);renderLib();m.remove()};
   let sure=0;$('#ed',m).onclick=async e=>{if(!sure){sure=1;e.target.textContent='Really delete?';return}
-    if(b.driveId){dropped=[...new Set([...dropped,b.driveId])];await dbPut('meta','dropped',dropped)}books=books.filter(x=>x!==b);await dbDel('books',b.id);await dbDel('files',b.id);for(const k of Object.values(b.links||{}))if(k.audio)dbDel('audio',k.audio);renderLib();scheduleCloud();m.remove()};
+    if(b.driveId){dropped=[...new Set([...dropped,b.driveId])];await dbPut('meta','dropped',dropped)}books=books.filter(x=>x!==b);await dbDel('books',b.id);await dbDel('files',b.id);for(const k of Object.values(b.links||{}))for(const track of audioTracks(k))if(track.audio)await dbDel('audio',track.audio);renderLib();scheduleCloud();m.remove()};
 }
 $('#nf').onclick=()=>{if(accountLock())return;
   const m=modal('<h3>New folder</h3><input id="fn" type="text" placeholder="Folder name" autocomplete="off" autocapitalize="sentences" spellcheck="false" style="-webkit-user-select:text;user-select:text"><div class="row"><button id="fc">Cancel</button><button class="pri" id="fo">Create</button></div>');
@@ -321,7 +322,7 @@ async function saveLibrary(){
  const snapshot=structuredClone(vis());
  for(const b of snapshot){
   if(!b.driveId){status('Uploading '+b.name+'…');const blob=await dbGet('files',b.id);if(!blob)throw new Error('Local PDF missing: '+b.name);await upload(b,blob);const current=books.find(x=>x.id===b.id);if(current)Object.assign(current,{driveId:b.driveId,owner:user.email,src:'mine'});}
-  for(const [page,link] of Object.entries(b.links||{}))if(link.audio){const blob=await dbGet('audio',link.audio);if(!blob&&!link.driveAudioId)throw new Error('Attached audio is missing for '+b.name);if(blob&&!link.driveAudioId){status('Uploading audio for '+b.name+'…');const file=await putFile({name:link.aname||'page-'+page+'-audio',parents:[folder]},blob);link.driveAudioId=file.id;const current=books.find(x=>x.id===b.id);if(current?.links?.[page]?.audio===link.audio){current.links[page].driveAudioId=file.id;await dbPut('books',current.id,current);}}}
+  for(const [page,pageLink] of Object.entries(b.links||{}))for(const link of audioTracks(pageLink))if(link.audio){const blob=await dbGet('audio',link.audio);if(!blob&&!link.driveAudioId)throw new Error('Attached audio is missing for '+b.name);if(blob&&!link.driveAudioId){status('Uploading audio for '+b.name+'…');const file=await putFile({name:link.aname||'page-'+page+'-audio',parents:[folder]},blob);link.driveAudioId=file.id;const current=books.find(x=>x.id===b.id);const currentTrack=audioTracks(current?.links?.[page]).find(t=>t.audio===link.audio);if(currentTrack){currentTrack.driveAudioId=file.id;await dbPut('books',current.id,current);}}}
  }
  // Detect edits made while PDFs and audio were uploading; save those in the next pass.
  const before=JSON.stringify(vis());
@@ -334,7 +335,7 @@ async function saveLibrary(){
 }
 function validateManifest(data){
  if(!data||data.version!==1||!Array.isArray(data.books)||!Array.isArray(data.folders)||data.books.length>2000)throw new Error('Invalid PDF Flip library file.');
- const ids=new Set();for(const b of data.books){if(!b||typeof b.id!=='string'||!/^[\w-]+$/.test(b.id)||ids.has(b.id)||typeof b.name!=='string'||typeof b.driveId!=='string'||!/^[\w-]+$/.test(b.driveId))throw new Error('Invalid book entry in Drive.');ids.add(b.id);if(b.links&&typeof b.links!=='object')throw new Error('Invalid page links.');for(const [page,link] of Object.entries(b.links||{})){if(!/^\d+$/.test(page)||!link||typeof link!=='object'||(link.driveAudioId&&!/^[\w-]+$/.test(link.driveAudioId))||(link.audio&&typeof link.audio!=='string'))throw new Error('Invalid audio or page link.');if(link.to&&(!Number.isInteger(link.to)||link.to<1))throw new Error('Invalid page destination.');}}
+ const ids=new Set();for(const b of data.books){if(!b||typeof b.id!=='string'||!/^[\w-]+$/.test(b.id)||ids.has(b.id)||typeof b.name!=='string'||typeof b.driveId!=='string'||!/^[\w-]+$/.test(b.driveId))throw new Error('Invalid book entry in Drive.');ids.add(b.id);if(b.links&&typeof b.links!=='object')throw new Error('Invalid page links.');for(const [page,link] of Object.entries(b.links||{})){if(!/^\d+$/.test(page)||!link||typeof link!=='object'||(link.driveAudioId&&!/^[\w-]+$/.test(link.driveAudioId))||(link.audio&&typeof link.audio!=='string'))throw new Error('Invalid audio or page link.');if(link.audios!==undefined&&(!Array.isArray(link.audios)||link.audios.length>100||link.audios.some(t=>!t||typeof t!=='object'||(t.audio&&typeof t.audio!=='string')||(t.driveAudioId&&!/^[\w-]+$/.test(t.driveAudioId))||(!t.audio&&!t.driveAudioId))))throw new Error('Invalid audio tracks.');if(link.to&&(!Number.isInteger(link.to)||link.to<1))throw new Error('Invalid page destination.');}}
  if(data.folders.some(f=>typeof f!=='string')||(data.dropped&&(!Array.isArray(data.dropped)||data.dropped.some(x=>typeof x!=='string')))||(data.hiddenDefaultFolders&&(!Array.isArray(data.hiddenDefaultFolders)||data.hiddenDefaultFolders.some(x=>typeof x!=='string'))))throw new Error('Invalid folder data.');return data;
 }
 async function downloadBook(file){const url=file.mimeType?.startsWith('application/vnd.google-apps.')?`${GA}/${file.id}/export?mimeType=application/pdf`:`${GA}/${file.id}?alt=media&supportsAllDrives=true`;return new Blob([await(await gj(url)).blob()],{type:'application/pdf'});}
@@ -349,7 +350,7 @@ async function restoreLibrary(say){
  const extra={...remote,owner:remote.src==='default'?undefined:user.email};
  // Generate a local cover without committing anything until every file is available.
  const record=await preparePdf(blob,remote.name,remote.folder,extra);record.last=remote.last||1;record.links=remote.links||{};
- const audios=[];for(const link of Object.values(record.links))if(link.driveAudioId){const audioBlob=await(await gj(`${GA}/${link.driveAudioId}?alt=media`)).blob();link.audio=link.audio||record.id+':'+link.driveAudioId;audios.push([link.audio,audioBlob]);}
+ const audios=[];for(const pageLink of Object.values(record.links))for(const link of audioTracks(pageLink))if(link.driveAudioId){const audioBlob=await(await gj(`${GA}/${link.driveAudioId}?alt=media`)).blob();link.audio=link.audio||record.id+':'+link.driveAudioId;audios.push([link.audio,audioBlob]);}
  staged.push({record,blob,audios});
  }
  const latest=await(await gj(`${GA}/${file.id}?fields=id,modifiedTime`)).json();if(latest.modifiedTime!==file.modifiedTime)throw new Error('Library changed during loading. Try again.');
@@ -370,7 +371,7 @@ async function loadDefaultLibrary(say){
   const meta=await(await gj(`${GA}/${remote.driveId}?fields=id,mimeType`)).json(),blob=await downloadBook(meta);
   const path=defaultPath(remote.folder),folder=hiddenDefaultFolders.includes(path)?'':path;
   const record=await preparePdf(blob,remote.name,folder,{id:'default-'+remote.driveId,driveId:remote.driveId,src:'default',links:structuredClone(remote.links||{})});
-  for(const [page,link] of Object.entries(record.links))if(link.driveAudioId){const audioBlob=await(await gj(`${GA}/${link.driveAudioId}?alt=media`)).blob();link.audio=record.id+':'+page;await dbPut('audio',link.audio,audioBlob);}else if(link.audio){delete link.audio;}
+  for(const [page,pageLink] of Object.entries(record.links))for(const [index,link] of audioTracks(pageLink).entries())if(link.driveAudioId){const audioBlob=await(await gj(`${GA}/${link.driveAudioId}?alt=media`)).blob();link.audio=record.id+':'+page+':'+index;await dbPut('audio',link.audio,audioBlob);}else if(link.audio){delete link.audio;}
   if(folder)addFolder(folder);await dbPut('files',record.id,blob);await dbPut('books',record.id,record);books.push(record);count++;
  }
  await dbPut('meta','folders',folders);renderLib();return count;
@@ -403,7 +404,7 @@ async function importGuest(){
  try{const old=await get('books',null,true);for(const b of old.filter(x=>!x.owner)){
  if(books.some(x=>x.importedGuest===b.id))continue;
  const blob=await get('files',b.id);if(!blob)continue;const id='b'+crypto.randomUUID(),copy={...b,id,owner:user.email,src:'mine',importedGuest:b.id};delete copy.driveId;copy.links=structuredClone(b.links||{});
- for(const [page,link] of Object.entries(copy.links))if(link.audio){const audio=await get('audio',link.audio);link.audio=id+':'+page;delete link.driveAudioId;if(audio)await dbPut('audio',link.audio,audio);else delete link.audio;}
+ for(const [page,pageLink] of Object.entries(copy.links))for(const [index,link] of audioTracks(pageLink).entries())if(link.audio){const audio=await get('audio',link.audio);link.audio=id+':'+page+':'+index;delete link.driveAudioId;if(audio)await dbPut('audio',link.audio,audio);else delete link.audio;}
  await dbPut('books',id,copy);await dbPut('files',id,blob);books.push(copy);if(copy.folder&&!folders.includes(copy.folder))folders.push(copy.folder);
  }await dbPut('meta','folders',folders);renderLib();status('Guest books copied — save library to upload them');}catch(error){toast(error.message);}finally{guest.close();accountBusy=false;acct();scheduleCloud();}
 }
@@ -472,7 +473,7 @@ async function img(n){if(n<1||n>N)return '';if(cache.has(n))return cache.get(n);
   c.width=v.width;c.height=v.height;await p.render({canvasContext:c.getContext('2d'),viewport:v}).promise;
   const u=c.toDataURL('image/jpeg',.88);cache.set(n,u);if(cache.size>24)cache.delete(cache.keys().next().value);return u}
 const pic=u=>u?`<img src="${u}">`:'';
-function bad(n){const k=(B.links||{})[n];if(!k)return '';return `<div class="bd">${k.to?`<button data-j="${k.to}">↪ p.${k.to}</button>`:''}${k.audio?`<button data-a="${n}">♪</button>`:''}</div>`}
+function bad(n){const k=(B.links||{})[n];if(!k)return '';return `<div class="bd">${k.to?`<button data-j="${k.to}">↪ p.${k.to}</button>`:''}${audioTracks(k).length?`<button aria-label="Play page audio" data-a="${n}">♪</button>`:''}</div>`}
 function fill(el,n,src){el.classList.toggle('empty',!n);
   el.innerHTML=n?`<img src="${src}" draggable="false"><i class="pn">${n}</i>${bad(n)}<div class="cz"><div class="cc"><div class="cut"></div><div class="fold"></div></div></div>`:''}
 function shift(l,r){book.style.transform=`translateX(${l&&r?0:l?'25%':'-25%'})`;book.classList.toggle('single',!(l&&r))}
@@ -484,8 +485,10 @@ let audioRequest=0,audioRate=1;
 function audioTime(t){t=Number.isFinite(t)?Math.max(0,Math.floor(t)):0;return Math.floor(t/60)+':'+String(t%60).padStart(2,'0')}
 function updateAudioControls(){const a=audio,d=Number.isFinite(a?.duration)?a.duration:0;$('#audio-play').textContent=a&&!a.paused?'Ⅱ':'▶';$('#audio-play').setAttribute('aria-label',a&&!a.paused?'Pause audio':'Play audio');$('#audio-seek').max=d;$('#audio-seek').disabled=!d;$('#audio-seek').value=a?.currentTime||0;$('#audio-current').textContent=audioTime(a?.currentTime||0);$('#audio-duration').textContent=audioTime(d)}
 function stopAudio(){audioRequest++;if(audio){audio.pause();URL.revokeObjectURL(audio.src);audio.removeAttribute('src');audio.load();audio=null}updateAudioControls()}
-function refreshAudioPlayer(){const available=B?pagesOf(s).filter(p=>p&&B.links?.[p]?.audio):[];$('#audio-dock').hidden=!available.length;if(!available.length){stopAudio();return}if(!audio||!available.some(p=>String(p)===audio._n))loadPageAudio(available[0],false);layout()}
-async function loadPageAudio(n,autoplay){stopAudio();const request=audioRequest,owner=B,key=owner?.links?.[n]?.audio;if(!key)return;const bl=await dbGet('audio',key);if(request!==audioRequest||B!==owner)return;if(!bl){$('#audio-dock').hidden=true;return toast('Audio file missing')}const a=new Audio(URL.createObjectURL(bl));audio=a;a._n=String(n);a.preload='metadata';a.playbackRate=audioRate;['loadedmetadata','durationchange','timeupdate','play','pause','ended'].forEach(event=>a.addEventListener(event,()=>{if(audio===a)updateAudioControls()}));a.addEventListener('error',()=>{if(audio===a)toast('Could not play this audio file')});updateAudioControls();if(autoplay)a.play().catch(()=>toast('Tap Play to start audio'))}
+function visibleAudioTracks(){return B?pagesOf(s).filter(Boolean).flatMap(page=>audioTracks(B.links?.[page]).map((track,index)=>({page,index,track}))):[]}
+function refreshAudioPlayer(){const available=visibleAudioTracks(),picker=$('#audio-track');$('#audio-dock').hidden=!available.length;picker.hidden=available.length<2;picker.innerHTML=available.map(({page,index})=>`<option value="${page}:${index}">Page ${page} · Audio ${index+1}</option>`).join('');if(!available.length){stopAudio();layout();return}const current=available.find(x=>String(x.page)===audio?._n&&x.track.audio===audio?._key);if(current)picker.value=current.page+':'+current.index;else{picker.value=available[0].page+':'+available[0].index;loadPageAudio(available[0].page,false,available[0].index)}layout()}
+async function loadPageAudio(n,autoplay,index=0){stopAudio();const request=audioRequest,owner=B,key=audioTracks(owner?.links?.[n])[index]?.audio;if(!key)return;$('#audio-track').value=n+':'+index;const bl=await dbGet('audio',key);if(request!==audioRequest||B!==owner)return;if(!bl)return toast('Audio file missing');const a=new Audio(URL.createObjectURL(bl));audio=a;a._n=String(n);a._key=key;a.preload='metadata';a.playbackRate=audioRate;['loadedmetadata','durationchange','timeupdate','play','pause','ended'].forEach(event=>a.addEventListener(event,()=>{if(audio===a)updateAudioControls()}));a.addEventListener('error',()=>{if(audio===a)toast('Could not play this audio file')});updateAudioControls();if(autoplay)a.play().catch(()=>toast('Tap Play to start audio'))}
+$('#audio-track').onchange=e=>{const [page,index]=e.target.value.split(':').map(Number);loadPageAudio(page,!!audio&&!audio.paused,index)};
 $('#audio-play').onclick=()=>{if(!audio)return;if(audio.paused)audio.play().catch(()=>toast('Could not play this audio file'));else audio.pause()};
 $('#audio-seek').oninput=e=>{if(audio&&Number.isFinite(audio.duration)){audio.currentTime=Math.min(audio.duration,+e.target.value);updateAudioControls()}};
 $('#audio-speed').onclick=()=>{audioRate=audioRate===1?2:1;if(audio)audio.playbackRate=audioRate;$('#audio-speed').textContent=audioRate+'×';$('#audio-speed').setAttribute('aria-label','Playback speed: '+audioRate+' times')};
@@ -525,15 +528,17 @@ addEventListener('beforeunload',()=>{if(B)saveBook(B)});
 
 /* ---------- page links ---------- */
 $('#lnk').onclick=()=>{if(accountLock())return toast('Wait for sync to finish.');
-  const ps=pagesOf(s).filter(Boolean);
-  const m=modal(`<h3>Link a page</h3><label>This page<select id="lp">${ps.map(p=>`<option>${p}</option>`).join('')}</select></label><label>Connect to page (optional, e.g. answer key)<input id="lt" type="number" min="1" max="${N}"></label><label>Audio file (optional) <span id="ln"></span><input id="la" type="file" accept="audio/*"></label><div class="row"><button id="lr">Remove link</button><button id="lc">Cancel</button><button class="pri" id="ls">Save</button></div>`);
-  const load=()=>{const k=B.links[$('#lp',m).value]||{};$('#lt',m).value=k.to||'';$('#ln',m).textContent=k.aname?'— current: '+k.aname:''};load();$('#lp',m).onchange=load;
-  $('#lc',m).onclick=()=>m.remove();
-  $('#lr',m).onclick=async()=>{const p=$('#lp',m).value,k=B.links[p];if(k&&k.audio)await dbDel('audio',k.audio);delete B.links[p];await done()};
-  $('#ls',m).onclick=async()=>{const p=$('#lp',m).value,old=B.links[p]||{},to=Math.min(+$('#lt',m).value||0,N),file=$('#la',m).files[0];let audio=old.audio||null,aname=old.aname||'';
-    if(file){audio=B.id+':'+p;aname=file.name;try{await dbPut('audio',audio,file)}catch(e){toast('Could not save audio')}}
-    if(!to&&!audio)delete B.links[p];else B.links[p]={to,audio,aname};await done()};
-  async function done(){saveBook(B);m.remove();const [l,r]=pagesOf(s);fill(L,l,await img(l));fill(R,r,await img(r));stopAudio();refreshAudioPlayer();toast('Saved')}
+ const ps=pagesOf(s).filter(Boolean),drafts=new Map();
+ const m=modal(`<h3>Link a page</h3><label>This page<select id="lp">${ps.map(p=>`<option>${p}</option>`).join('')}</select></label><label>Connect to page (optional)<input id="lt" type="number" min="1" max="${N}"></label><div id="audio-attachments"></div><label>Add audio files<input id="la" type="file" accept="audio/*" multiple></label><div class="row"><button id="lr">Remove all links</button><button id="lc">Cancel</button><button class="pri" id="ls">Save</button></div>`);
+ const current=()=>{const p=$('#lp',m).value;if(!drafts.has(p)){const old=B.links[p]||{};drafts.set(p,{to:old.to||0,audios:audioTracks(old).map(t=>({audio:t.audio,aname:t.aname||'',driveAudioId:t.driveAudioId}))})}return drafts.get(p)};
+ const render=()=>{$('#audio-attachments',m).innerHTML=current().audios.map((t,i)=>`<div style="display:flex;align-items:center;gap:8px;margin:6px 0"><span style="flex:1;overflow-wrap:anywhere">${esc(t.aname||'Audio '+(i+1))}</span><button data-remove-audio="${i}" aria-label="Remove audio ${i+1}">×</button></div>`).join('')};
+ const load=()=>{$('#lt',m).value=current().to||'';render()};load();$('#lp',m).onchange=load;
+ $('#lt',m).oninput=e=>current().to=Math.min(Math.max(+e.target.value||0,0),N);
+ $('#audio-attachments',m).onclick=e=>{const b=e.target.closest('[data-remove-audio]');if(b){current().audios.splice(+b.dataset.removeAudio,1);render()}};
+ $('#la',m).onchange=e=>{for(const file of e.target.files)current().audios.push({audio:B.id+':'+crypto.randomUUID(),aname:file.name,file});e.target.value='';render()};
+ $('#lc',m).onclick=()=>m.remove();
+ $('#lr',m).onclick=()=>{current().to=0;current().audios=[];load()};
+ $('#ls',m).onclick=async()=>{const button=$('#ls',m);button.disabled=true;try{for(const [page,draft] of drafts){for(const track of draft.audios)if(track.file)await dbPut('audio',track.audio,track.file);const keep=new Set(draft.audios.map(t=>t.audio));for(const old of audioTracks(B.links[page]))if(old.audio&&!keep.has(old.audio))await dbDel('audio',old.audio);if(!draft.to&&!draft.audios.length)delete B.links[page];else B.links[page]={to:draft.to,audios:draft.audios.map(({file,...track})=>track)};}await saveBook(B);m.remove();const [l,r]=pagesOf(s);fill(L,l,await img(l));fill(R,r,await img(r));stopAudio();refreshAudioPlayer();toast('Saved')}catch(error){toast('Could not save audio: '+error.message);button.disabled=false}};
 };
 
 /* ---------- boot ---------- */
