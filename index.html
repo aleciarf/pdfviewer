@@ -204,7 +204,7 @@ function editBook(b){
   const m=modal(`<h3>Edit book</h3><label>Name<input id="en" value="${esc(b.name)}"></label><label>Folder<select id="ef"><option value="">Unfiled</option>${folders.map(f=>`<option ${f===b.folder?'selected':''}>${esc(f)}</option>`).join('')}</select></label><div class="row"><button id="ed">Delete</button><button id="ec">Cancel</button><button class="pri" id="es">Save</button></div>`);
   $('#ec',m).onclick=()=>m.remove();
   $('#es',m).onclick=()=>{b.name=$('#en',m).value.trim()||b.name;b.folder=$('#ef',m).value;saveBook(b);renderLib();m.remove()};
-  let sure=0;$('#ed',m).onclick=async e=>{if(!sure){sure=1;e.target.textContent='Really delete?';return}
+  let sure=0;$('#ed',m).onclick=async e=>{if(!sure){sure=1;e.target.textContent='Really delete?';e.target.style.background='#dc2626';e.target.style.color='#fff';e.target.style.borderColor='#dc2626';return}
     if(b.driveId){dropped=[...new Set([...dropped,b.driveId])];await dbPut('meta','dropped',dropped)}books=books.filter(x=>x!==b);await dbDel('books',b.id);await dbDel('files',b.id);for(const k of Object.values(b.links||{}))for(const track of audioTracks(k))if(track.audio)await dbDel('audio',track.audio);renderLib();scheduleCloud();m.remove()};
 }
 $('#nf').onclick=()=>{if(accountLock())return;
@@ -368,6 +368,8 @@ function mergeValue(base,local,remote){
  }return local;
 }
 function mergeLibraries(base,local,remote){
+ const relocate=data=>data&&({...data,books:data.books.map(b=>repairBookReferences(b,defaultRepairs)),dropped:(data.dropped||[]).map(id=>defaultRepairs.get(id)||id)});
+ base=relocate(base);local=relocate(local);remote=relocate(remote);
  const key=b=>b.driveId||b.id, lm=new Map(local.books.map(b=>[key(b),b])),rm=new Map(remote.books.map(b=>[key(b),b])),bm=new Map((base?.books||[]).map(b=>[key(b),b]));
  const dropped=[...new Set([...(local.dropped||[]),...(remote.dropped||[])])],hiddenDefaultFolders=[...new Set([...(local.hiddenDefaultFolders||[]),...(remote.hiddenDefaultFolders||[])])],books=[];
  for(const id of new Set([...lm.keys(),...rm.keys()])){if(dropped.includes(id))continue;const l=lm.get(id),r=rm.get(id);if(l&&r)books.push(mergeValue(bm.get(id),l,r));else if(l)books.push(l);else if(r)books.push(r)}
@@ -419,21 +421,42 @@ async function restoreLibrary(say){
  const file=files[0],data=validateManifest(await(await gj(`${GA}/${file.id}?alt=media`)).json());
  const merged=cloudDirty?mergeLibraries(cloudBase,localManifest(),data):data;await applyManifest(merged);cloudBase=data;cloudVersion=file;await dbPut('meta','cloudBase',data);await dbPut('meta','cloudVersion',file);say('Library ready — PDFs open on demand');return true;
 }
-// Shared data is read only. All preferences and deletions go to the user's library.json.
+// Shared data is read only. Resolve copied files by exact, unique names in the shared folder.
+const defaultRepairs=new Map();
+function defaultFileRepairs(data,files){
+ const normalize=name=>String(name||'').normalize('NFC').trim().replace(/\.pdf$/i,'').toLocaleLowerCase();
+ const ids=new Set(files.map(f=>f.id)),repairs=new Map();
+ const unique=(name,pdf)=>{const matches=files.filter(f=>(pdf?f.mimeType==='application/pdf':f.mimeType?.startsWith('audio/')||/\.(mp3|wav|m4a|ogg|aac|flac)$/i.test(f.name))&&normalize(f.name)===normalize(name));return matches.length===1?matches[0]:null};
+ for(const book of data.books){if(!ids.has(book.driveId)){const match=unique(book.name,true);if(match)repairs.set(book.driveId,match.id);}
+  for(const link of Object.values(book.links||{}))for(const track of audioTracks(link))if(track.driveAudioId&&!ids.has(track.driveAudioId)){const match=unique(track.aname,false);if(match)repairs.set(track.driveAudioId,match.id);}
+ }
+ return repairs;
+}
+function repairBookReferences(book,repairs){
+ const out=structuredClone(book);if(repairs.has(out.driveId))out.driveId=repairs.get(out.driveId);
+ for(const link of Object.values(out.links||{})){if(repairs.has(link.toDriveId))link.toDriveId=repairs.get(link.toDriveId);for(const track of audioTracks(link))if(repairs.has(track.driveAudioId))track.driveAudioId=repairs.get(track.driveAudioId);}
+ return out;
+}
 async function loadDefaultLibrary(say){
  const manifests=await listFiles(`'${q1(DEFAULT_FOLDER)}' in parents and name='default.json' and trashed=false`);
  if(manifests.length!==1)throw new Error(manifests.length?'Multiple default.json files found in the shared library.':'No default.json found in the shared library.');
- const data=validateManifest(await(await gj(`${GA}/${manifests[0].id}?alt=media`)).json());let count=0;
+ const data=validateManifest(await(await gj(`${GA}/${manifests[0].id}?alt=media`)).json()),files=await listDir(DEFAULT_FOLDER),repairs=defaultFileRepairs(data,files);let count=0;
+ for(const [oldId,newId] of repairs)defaultRepairs.set(oldId,newId);
  const defaultPath=f=>f===DEFAULT_NAME||f?.startsWith(DEFAULT_NAME+' / ')?f:f?DEFAULT_NAME+' / '+f:DEFAULT_NAME;
  const addFolder=f=>{if(!hiddenDefaultFolders.includes(f)&&!folders.includes(f))folders.push(f)};
  for(const f of data.folders)addFolder(defaultPath(f));
- for(const remote of data.books){
-  if(dropped.includes(remote.driveId)||books.some(b=>b.driveId===remote.driveId))continue;
+ // Preserve deletion choices when a shared PDF was copied to a new Drive ID.
+ for(const [oldId,newId] of repairs)if(dropped.includes(oldId)&&!dropped.includes(newId))dropped.push(newId);
+ for(const original of data.books){
+  const remote=repairBookReferences(original,repairs);
+  if(dropped.includes(original.driveId)||dropped.includes(remote.driveId))continue;
+  const existing=books.find(b=>b.driveId===remote.driveId||b.driveId===original.driveId);
+  if(existing){const fixed=repairBookReferences(existing,repairs);Object.assign(existing,fixed);await dbPut('books',existing.id,existing);if(existing.folder)addFolder(existing.folder);continue;}
   const path=defaultPath(remote.folder),folder=hiddenDefaultFolders.includes(path)?'':path;
   const record=remoteRecord({...remote,id:'default-'+remote.driveId,src:'default',folder});
   if(folder)addFolder(folder);await dbPut('books',record.id,record);books.push(record);count++;
  }
- await dbPut('meta','folders',folders);renderLib();return count;
+ await dbPut('meta','dropped',dropped);await dbPut('meta','folders',folders);renderLib();return count;
 }
 async function syncDrive(say=()=>{},interactive=true,includeDefault=true){
  if(accountLock())return 0;clearTimeout(cloudTimer);accountBusy=true;acct();let completed=false;
