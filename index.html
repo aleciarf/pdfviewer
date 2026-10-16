@@ -188,7 +188,7 @@ const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&g
 function renderLib(){
   const sel=$('#impf'),cur=sel.value;
   sel.innerHTML='<option value="">Unfiled</option>'+folders.filter(f=>!f.startsWith('Default library')).map(f=>`<option>${esc(f)}</option>`).join('');sel.value=folders.includes(cur)?cur:'';
-  const groups=[...folders,''].map(f=>({f,items:vis().filter(b=>(b.folder||'')===f)})).filter(g=>g.f||g.items.length);
+  const groups=[...new Set([...folders,...vis().map(b=>b.folder).filter(Boolean),''])].map(f=>({f,items:vis().filter(b=>(b.folder||'')===f)})).filter(g=>g.f||g.items.length);
   const body=$('#libbody');
   if(!vis().length&&!folders.length){body.innerHTML='<div class="empty-msg">No books yet.<br>Import a PDF to start, or sign in with Google to load your own library.<br>The shared default library loads when you sign in.</div>';return}
   body.innerHTML=groups.map(g=>`<div class="fh">📁 ${g.f?esc(g.f):'Unfiled'} <small>${g.items.length}</small><span class="sp"></span>${g.f?`<button data-df="${esc(g.f)}" title="Delete folder">✕</button>`:''}</div><div class="grid">${g.items.map(b=>`<div class="card" data-id="${b.id}"><button class="more" data-e="${b.id}">⋯</button><div class="cover" style="aspect-ratio:${b.aspect}"><img src="${b.thumb||'data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%22210%22%20height%3D%22297%22%3E%3Crect%20width%3D%22210%22%20height%3D%22297%22%20fill%3D%22%23e7e1d5%22/%3E%3Cpath%20d%3D%22M20%200v297%22%20stroke%3D%22%23c9bfae%22/%3E%3Ctext%20x%3D%22115%22%20y%3D%22155%22%20text-anchor%3D%22middle%22%20font-family%3D%22sans-serif%22%20font-size%3D%2224%22%20fill%3D%22%237a7063%22%3EPDF%3C/text%3E%3C/svg%3E'}"><div class="prog"><i style="width:${Math.round(((b.last||1)/b.pages)*100)}%"></i></div></div><div class="t">${esc(b.name)}<small>p.${b.last||1} / ${b.pages}</small></div></div>`).join('')||'<span style="color:var(--muted)">Empty folder</span>'}</div>`).join('');
@@ -372,10 +372,14 @@ function mergeLibraries(base,local,remote){
  const dropped=[...new Set([...(local.dropped||[]),...(remote.dropped||[])])],hiddenDefaultFolders=[...new Set([...(local.hiddenDefaultFolders||[]),...(remote.hiddenDefaultFolders||[])])],books=[];
  for(const id of new Set([...lm.keys(),...rm.keys()])){if(dropped.includes(id))continue;const l=lm.get(id),r=rm.get(id);if(l&&r)books.push(mergeValue(bm.get(id),l,r));else if(l)books.push(l);else if(r)books.push(r)}
  const baseFolders=new Set(base?.folders||[]),removed=new Set([...(baseFolders)].filter(f=>!local.folders.includes(f)||!remote.folders.includes(f)));
- return {version:1,books,dropped,hiddenDefaultFolders,folders:[...new Set([...local.folders,...remote.folders])].filter(f=>!removed.has(f)&&!hiddenDefaultFolders.includes(f))};
+ const keptFolders=[...new Set([...local.folders,...remote.folders])].filter(f=>!removed.has(f)&&!hiddenDefaultFolders.includes(f));
+ // A surviving book must keep its folder visible even if an older Drive manifest lacks that folder.
+ for(const b of books){if(hiddenDefaultFolders.includes(b.folder))b.folder='';else if(b.folder&&!keptFolders.includes(b.folder))keptFolders.push(b.folder);}
+ return {version:1,books,dropped,hiddenDefaultFolders,folders:keptFolders};
 }
 function remoteRecord(record){const local=books.find(b=>b.driveId===record.driveId||b.id===record.id);return {...record,id:local?.id||record.id,owner:record.src==='default'?undefined:user.email,thumb:local?.thumb||'',aspect:record.aspect||.707,pages:record.pages||1,links:record.links||{}}}
 async function applyManifest(data){
+ data={...data,folders:[...new Set([...data.folders,...data.books.map(b=>b.folder).filter(Boolean)])]};
  const records=data.books.filter(b=>!(data.dropped||[]).includes(b.driveId)).map(remoteRecord);const db=await DB;
  await new Promise((resolve,reject)=>{const t=db.transaction(['books','meta'],'readwrite');t.objectStore('books').clear();for(const b of records)t.objectStore('books').put(b,b.id);for(const [key,value] of Object.entries({folders:data.folders,dropped:data.dropped||[],hiddenDefaultFolders:data.hiddenDefaultFolders||[]}))t.objectStore('meta').put(value,key);t.oncomplete=resolve;t.onerror=()=>reject(t.error);t.onabort=()=>reject(t.error)});
  books=records;folders=data.folders;dropped=data.dropped||[];hiddenDefaultFolders=data.hiddenDefaultFolders||[];if(B){const fresh=books.find(b=>b.id===B.id);if(fresh)B=fresh;paintAllDrawings()}renderLib();
