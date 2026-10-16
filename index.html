@@ -473,7 +473,7 @@ $('#usr').onclick=settings;$('#signout').onclick=signOut;
 
 
 /* Universal tags and notes are stored in aleciarf/pdfviewer, separate from Drive. */
-const SHARED_NOTES_API=''; // Site owner: set this to the deployed Worker origin for all visitors.
+const SHARED_NOTES_API='https://pdf-flip-notes.phuongm1409.workers.dev';
 let sharedData={version:1,books:{}},sharedDrafts={},sharedTimer=0,sharedSaving=false,sharedError='';
 const sharedApi=()=>SHARED_NOTES_API||gget('pdf-flip-shared-api');
 const sharedBookKey=b=>b?.driveId?'drive:'+b.driveId:null;
