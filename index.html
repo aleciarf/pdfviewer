@@ -238,7 +238,7 @@ $('#file').onchange=async e=>{
 /* Google identity and private library sync. Set once for all visitors. */
 const SIGN_IN_ICON='<svg class="portrait-icon" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19,0H5A5.006,5.006,0,0,0,0,5V19a5.006,5.006,0,0,0,5,5H19a5.006,5.006,0,0,0,5-5V5A5.006,5.006,0,0,0,19,0ZM7,22V21a5,5,0,0,1,10,0v1Zm15-3a3,3,0,0,1-3,3V21A7,7,0,0,0,5,21v1a3,3,0,0,1-3-3V5A3,3,0,0,1,5,2H19a3,3,0,0,1,3,3Z"/><path d="M12,4a4,4,0,1,0,4,4A4,4,0,0,0,12,4Zm0,6a2,2,0,1,1,2-2A2,2,0,0,1,12,10Z"/></svg>';
 const GOOGLE_CLIENT_ID='725283161506-glelre38sq3kaeidarght0fot2111rf0.apps.googleusercontent.com';
-const DEFAULT_FOLDER='18y_MPhhWTGMMjtxb2Pj4rDiw8Iasx6GA',DEFAULT_NAME='Default library',MY_ROOT='DCD Book Library';
+const DEFAULT_FOLDER='18y_MPhhWTGMMjtxb2Pj4rDiw8Iasx6GA',DEFAULT_NAME='Default library',MY_ROOT='PDF viewer';
 const GA='https://www.googleapis.com/drive/v3/files';
 const SCOPE='openid email profile https://www.googleapis.com/auth/drive.file';
 const READ_SCOPE='https://www.googleapis.com/auth/drive.readonly';
@@ -327,7 +327,16 @@ async function findOrMake(name,parent){
  if(files.length)return files[0].id;
  return(await(await gj(GA+'?fields=id',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,mimeType:'application/vnd.google-apps.folder',parents:[parent]})})).json()).id;
 }
-const root=async()=>myRoot||(myRoot=await findOrMake(MY_ROOT,'root'));
+async function root(){
+ if(myRoot)return myRoot;
+ const current=await listFiles(`name='${q1(MY_ROOT)}' and mimeType='application/vnd.google-apps.folder' and 'root' in parents and trashed=false`);
+ if(current.length>1)throw new Error('Multiple PDF viewer folders found. Keep one before syncing.');
+ if(current.length)return myRoot=current[0].id;
+ const legacy=await listFiles(`name='DCD Book Library' and mimeType='application/vnd.google-apps.folder' and 'root' in parents and trashed=false`);
+ if(legacy.length>1)throw new Error('Multiple previous library folders found. Rename the one you want to PDF viewer.');
+ if(legacy.length){await gj(GA+'/'+legacy[0].id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:MY_ROOT})});return myRoot=legacy[0].id;}
+ return myRoot=await findOrMake(MY_ROOT,'root');
+}
 async function putFile(metadata,blob,id,etag){
  const boundary='dcd'+crypto.randomUUID(),body=new Blob(['--'+boundary+'\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n',JSON.stringify(metadata),'\r\n--'+boundary+'\r\nContent-Type: '+(blob.type||'application/octet-stream')+'\r\n\r\n',blob,'\r\n--'+boundary+'--\r\n']);
  return(await gj('https://www.googleapis.com/upload/drive/v3/files'+(id?'/'+id:'')+'?uploadType=multipart&fields=id,modifiedTime',{method:id?'PATCH':'POST',headers:{'Content-Type':'multipart/related; boundary='+boundary,...(etag?{'If-Match':etag}:{})},body})).json();
