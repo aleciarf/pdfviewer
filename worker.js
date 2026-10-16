@@ -50,10 +50,10 @@ async function authRoute(request,env,reply){
  const url=new URL(request.url),path=url.pathname,callback=url.origin+'/auth/callback';
  if(!env.GOOGLE_CLIENT_SECRET)return reply({error:'Add GOOGLE_CLIENT_SECRET to this Worker.'},503);
  if(path==='/auth/start'&&request.method==='POST'){
-  const input=await request.json();if(!/^[a-f0-9-]{36}$/.test(input.nonce))return reply({error:'Invalid login request'},400);
+  const input=await request.json();if(input.adminPassword!==undefined&&(!env.ADMIN_PASSWORD||input.adminPassword!==env.ADMIN_PASSWORD))return reply({error:'Incorrect admin password, or ADMIN_PASSWORD is not configured.'},403);if(!/^[a-f0-9-]{36}$/.test(input.nonce))return reply({error:'Invalid login request'},400);
   const verifier=b64url(crypto.getRandomValues(new Uint8Array(32))),challenge=b64url(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(verifier))));
   const state=await seal(env,{type:'state',nonce:input.nonce,verifier,exp:Date.now()+600000});
-  const args=new URLSearchParams({client_id:env.GOOGLE_CLIENT_ID||CLIENT_ID,redirect_uri:callback,response_type:'code',scope:'openid email profile https://www.googleapis.com/auth/drive.file'+(input.extra?' https://www.googleapis.com/auth/drive.readonly':''),access_type:'offline',prompt:'consent',include_granted_scopes:'true',state,code_challenge:challenge,code_challenge_method:'S256'});
+  const args=new URLSearchParams({client_id:env.GOOGLE_CLIENT_ID||CLIENT_ID,redirect_uri:callback,response_type:'code',scope:'openid email profile https://www.googleapis.com/auth/drive.file'+(input.extra?' https://www.googleapis.com/auth/drive.readonly':'')+(input.adminPassword!==undefined?' https://www.googleapis.com/auth/drive':''),access_type:'offline',prompt:'consent',include_granted_scopes:'true',state,code_challenge:challenge,code_challenge_method:'S256'});
   return reply({url:'https://accounts.google.com/o/oauth2/v2/auth?'+args});
  }
  if(path==='/auth/callback'&&request.method==='GET'){
@@ -72,6 +72,13 @@ export default {async fetch(request,env) {
  const reply=(data,status=200)=>Response.json(data,{status,headers:cors});
  if(origin&&origin!==allowed)return reply({error:'Origin not allowed'},403);
  if(request.method==='OPTIONS')return new Response(null,{status:204,headers:cors});
+ if(new URL(request.url).pathname==='/admin/check'&&request.method==='POST'){
+  if(!await verifyGoogle(request))return reply({error:'Sign in to Google first.'},401);
+  let input;try{input=await request.json()}catch{return reply({error:'Invalid request'},400)}
+  if(!env.ADMIN_PASSWORD)return reply({error:'Add ADMIN_PASSWORD as a Worker secret.'},503);
+  if(input.password!==env.ADMIN_PASSWORD)return reply({error:'Incorrect admin password.'},403);
+  return reply({ok:true});
+ }
  if(new URL(request.url).pathname.startsWith('/auth/')){try{return await authRoute(request,env,reply)}catch{return reply({error:'Google login service unavailable. Check Worker credentials.'},502)}}
  if(!env.GITHUB_TOKEN)return reply({error:'Add GITHUB_TOKEN as an encrypted Worker secret.'},503);
  try {

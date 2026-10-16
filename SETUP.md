@@ -103,3 +103,11 @@ Prepared code has been tested with mocked GitHub/Google services. It has not bee
 The Worker uses PKCE and an encrypted, time-limited state. It encrypts the refresh credential using a key derived from the Google client secret. Only the encrypted credential is persisted in browser localStorage; it is a sensitive bearer credential. Access tokens stay in memory. No credentials go to GitHub. Signing out clears the browser credential; Google Account permission revocation invalidates access. Changing the client secret invalidates saved sessions. Sessions last up to 180 days; Google's Testing status normally limits Drive refresh tokens to seven days.
 
 The notes API remains at /notes. Google login adds /auth/start, /auth/callback and /auth/refresh. No KV binding is required.
+
+
+## Default library admin
+Add ADMIN_PASSWORD as an encrypted Worker secret (use your chosen password), then deploy the included worker.js. Upload the updated index.html to Pages. In the account popup choose More options → Manage default library. Enter the password, then authorize Google with an account that has Editor access to shared Drive folder 1piyq-9867rR2lWB167oDUFlOcq-IBX6K. Admin authorization requests Drive read/write access so files can be uploaded into this existing shared folder. Regular sign-in keeps its existing scopes.
+
+The admin workspace has separate device drafts. Use Import, folders, book menus and page audio tools, then Publish default library. Publishing sends new PDFs/audio to the shared folder and replaces default.json. It strips private drawings, account identity, page notes and reading progress. It does not delete original Drive files when removing a book from the list. The password stays in memory only. Reload published defaults discards your unpublished workspace draft after confirmation. Return to my library restores the personal workspace. Current users retain their personal book metadata/deletions when reloading shared defaults; new users receive the latest published book list.
+
+The password is validated by the Worker. Google Drive still enforces the signed-in account's folder permissions; a password alone cannot grant Drive access.

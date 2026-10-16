@@ -244,6 +244,7 @@ const SCOPE='openid email profile https://www.googleapis.com/auth/drive.file';
 const READ_SCOPE='https://www.googleapis.com/auth/drive.readonly';
 const gget=k=>{try{return localStorage.getItem(k)||''}catch(e){return ''}},gset=(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}};
 const cid=()=>GOOGLE_CLIENT_ID||gget('dcd-client-id');
+let adminMode=false,adminPassword='',adminBaseline=null;
 let cloudBase=null,changeRevision=0,cloudDirty=false;
 let gtok='',gexp=0,user=null,myRoot='',syncing=0,accountBusy=false,cloudTimer=0,cloudVersion=null,cloudState='',readAllowed=false,authBusy=false;
 const autoEnabled=()=>true;
@@ -286,7 +287,7 @@ async function gAuth(interactive=true,extra=false,force=false){
   let timer;const cleanup=()=>{removeEventListener('message',receive);clearInterval(timer);};
   const receive=e=>{if(e.origin!==AUTH_API||e.source!==popup||e.data?.type!=='pdf-flip-auth')return;if(e.data.error){cleanup();reject(Error(e.data.error));return}if(e.data.nonce!==nonce)return;cleanup();gset('pdf-flip-session',e.data.session);resolve(acceptGoogleToken(e.data));};
   addEventListener('message',receive);timer=setInterval(()=>{if(popup.closed){cleanup();reject(Error('Sign-in window closed.'));}},1000);
-  fetch(AUTH_API+'/auth/start',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({nonce,extra:extra||readAllowed})}).then(async r=>{const data=await r.json();if(!r.ok)throw Error(data.error||'Google sign-in unavailable.');popup.location.href=data.url;}).catch(error=>{cleanup();popup.close();reject(error)});
+  fetch(AUTH_API+'/auth/start',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({nonce,extra:extra||readAllowed,...(adminPassword?{adminPassword}:{})})}).then(async r=>{const data=await r.json();if(!r.ok)throw Error(data.error||'Google sign-in unavailable.');popup.location.href=data.url;}).catch(error=>{cleanup();popup.close();reject(error)});
  });}finally{authBusy=false;acct()}
 }
 addEventListener('focus',()=>{if(user&&gget('pdf-flip-session')&&Date.now()>=gexp-120000)renewGoogle().then(()=>{if(cloudDirty)scheduleCloud();flushSharedNotes();}).catch(()=>refreshConnection());});
@@ -313,6 +314,7 @@ async function signIn(interactive=true,extra=false,force=false){
  gset('pdf-flip-account',JSON.stringify({sub:user.sub,email:user.email,name:user.name||'',given_name:user.given_name||''}));status('Connected: '+user.email);acct();loadSharedNotes();flushSharedNotes();
 }
 async function signOut(){
+ if(adminMode)await exitAdmin();
  if(accountLock())return toast('Wait for the current sync to finish.');
  if(B)closeBook();clearTimeout(cloudTimer);document.querySelectorAll('.mdl').forEach(m=>m.remove());
  accountBusy=true;acct();try{gset('pdf-flip-account','');gset('pdf-flip-session','');gtok='';gexp=0;user=null;myRoot='';readAllowed=false;await loadDeviceLibrary('guest');status('Signed out — Drive files and device copies kept');}catch(error){toast(error.message);}finally{accountBusy=false;acct();}
@@ -353,6 +355,7 @@ async function walk(id,path,acc,mine,seen=new Set()){
  for(const f of await listDir(id)){if(f.mimeType==='application/vnd.google-apps.folder')await walk(f.id,path?path+' / '+f.name:f.name,acc,mine,seen);else if(['application/pdf','application/vnd.google-apps.document','application/vnd.google-apps.presentation'].includes(f.mimeType))acc.push({f,path,mine});}return acc;
 }
 function scheduleCloud(){
+ if(adminMode){changeRevision++;cloudDirty=true;dbPut('meta','cloudDirty',true).catch(()=>{});status('Default library draft saved on this device — publish when ready.');return;}
  changeRevision++;cloudDirty=true;dbPut('meta','cloudDirty',true).catch(()=>{});clearTimeout(cloudTimer);
  if(!user||syncing||accountBusy)return;
  if(!gtok||Date.now()>=gexp){renewGoogle().then(()=>scheduleCloud()).catch(error=>status('Saved on this device — '+error.message));return}
@@ -387,6 +390,7 @@ async function applyManifest(data){
  books=records;folders=data.folders;dropped=data.dropped||[];hiddenDefaultFolders=data.hiddenDefaultFolders||[];if(B){const fresh=books.find(b=>b.id===B.id);if(fresh)B=fresh;paintAllDrawings()}renderLib();
 }
 async function saveLibrary(){
+ if(adminMode)return publishDefaults();
  if(syncing||accountBusy)return;if(!user)throw new Error('Sign in with Google first.');if(!gtok||Date.now()>=gexp)await renewGoogle();
  const run=async()=>{syncing=1;clearTimeout(cloudTimer);acct();const revision=changeRevision;let succeeded=false;
  try{const folder=await root();
@@ -459,6 +463,7 @@ async function loadDefaultLibrary(say){
  await dbPut('meta','dropped',dropped);await dbPut('meta','folders',folders);renderLib();return count;
 }
 async function syncDrive(say=()=>{},interactive=true,includeDefault=true){
+ if(adminMode)return toast('Return to your personal library before syncing.');
  if(accountLock())return 0;clearTimeout(cloudTimer);accountBusy=true;acct();let completed=false;
  try{await signIn(interactive,true);syncing=1;accountBusy=false;acct();
  // Restore the user's deletion history before considering any shared items.
@@ -472,6 +477,7 @@ async function syncDrive(say=()=>{},interactive=true,includeDefault=true){
  }finally{syncing=0;accountBusy=false;acct();if(completed)scheduleCloud();}
 }
 async function loadCloudLibrary(){
+ if(adminMode)return toast('Return to your personal library before loading.');
  if(accountLock())return;if(!user)return toast('Sign in with Google first.');
  
  if(B)closeBook();clearTimeout(cloudTimer);syncing=1;acct();
@@ -490,6 +496,7 @@ async function importGuest(){
  }await dbPut('meta','folders',folders);renderLib();status('Guest books copied — save library to upload them');}catch(error){toast(error.message);}finally{guest.close();accountBusy=false;acct();scheduleCloud();}
 }
 function settings(){
+ if(adminMode)return adminSettings();
  const m=modal(`<header class="settings-heading"><div><h3>Settings</h3><p class="settings-note">PDF Flip · Google Drive</p></div><button id="gclose" class="settings-close" aria-label="Close settings">×</button></header>
  <div class="settings-content">
  <section class="settings-account"><div class="settings-account-row"><div class="settings-avatar">${SIGN_IN_ICON}</div><div class="settings-identity"><strong>${user?esc(user.name||'Google account'):'Connect your Google Drive'}</strong><p class="settings-note">${user?esc(user.email):'Your library, across devices'}</p><p class="settings-note" id="connection-detail">${connectionState()==='connected'?'Connected':user?'Not connected':'Not signed in'}</p></div></div>
@@ -500,6 +507,7 @@ function settings(){
  <details class="settings-more"><summary>More options <span aria-hidden="true">⌄</span></summary><div class="settings-more-content">
  ${user?'<button id="gsign">Reconnect Google</button>':''}
  <div><button id="gshared">Reload shared library</button><p class="settings-note settings-hint">Loads automatically after sign-in. Your deletions are saved privately.</p></div>
+ <button id="gadmin" ${user?'':'disabled'}>Manage default library</button>
  <button id="gguest" ${user?'':'disabled'}>Import this device’s books</button>
  <details><summary>Storage &amp; privacy</summary><p class="settings-note">PDFs, audio, page links and progress are saved in your Drive. Signing out keeps your saved files and device copies. Deleting a book here does not delete its original Drive PDF.</p><p class="settings-note"><a href="policy.html">Privacy Policy</a> · <a href="terms.html">Terms</a></p></details>
  <details><summary>Site setup</summary><label>Google Client ID<input id="gcid" autocomplete="off" value="${esc(cid())}" placeholder="…apps.googleusercontent.com"></label><p class="settings-note">The site owner configures this public ID. Authorized origin: ${esc(location.origin)}.</p><button id="gconfig">Save setup</button><label>Shared notes connection<input id="shared-api-url" type="url" value="${esc(sharedApi())}" placeholder="https://pdf-flip-notes.YOUR-SUBDOMAIN.workers.dev"></label><button id="save-shared-api">Save shared connection</button><p class="settings-note">Shared Tags and Notes are public in aleciarf/pdfviewer. Drawings stay private.</p></details>
@@ -513,8 +521,67 @@ function settings(){
  $('#save-shared-api',m).onclick=()=>{try{const u=new URL($('#shared-api-url',m).value.trim());if(u.protocol!=='https:'||u.username||u.password)throw new Error();gset('pdf-flip-shared-api',u.origin);loadSharedNotes();flushSharedNotes();toast('Shared connection saved')}catch{toast('Enter the HTTPS Worker address')}};
  $('#gsign',m).onclick=()=>{m.remove();$('#syn').click();};if($('#gout',m))$('#gout',m).onclick=()=>{m.remove();signOut();};
  $('#gsave',m).onclick=()=>{m.remove();saveLibrary().catch(error=>{status(error.message);toast(error.message);});};$('#gload',m).onclick=()=>{m.remove();loadCloudLibrary();};
+ $('#gadmin',m).onclick=()=>{m.remove();adminLogin();};
  $('#gshared',m).onclick=()=>{m.remove();syncDrive(status,true,true).catch(error=>{status(error.message);toast(error.message);});};$('#gguest',m).onclick=()=>{m.remove();importGuest();};
  m.querySelectorAll('a[href^="#"]').forEach(a=>a.addEventListener('click',()=>m.remove()));
+}
+function updateAdminBanner(){
+ let banner=$('#admin-banner');if(!banner){banner=document.createElement('div');banner.id='admin-banner';banner.style.cssText='padding:10px 18px;background:#fff1cc;color:#332b14;display:flex;align-items:center;gap:12px;flex-wrap:wrap;border-bottom:1px solid #d4b461';banner.innerHTML='<strong>Default library · Admin</strong><span>Changes are drafts until published.</span><button id="admin-publish">Publish default library</button><button id="admin-exit">Return to my library</button>';document.body.insertBefore(banner,$('#lib'));$('#admin-publish').onclick=()=>publishDefaults().catch(error=>{status(error.message);toast(error.message)});$('#admin-exit').onclick=()=>exitAdmin().catch(error=>toast(error.message));}
+ banner.style.display=adminMode?'flex':'none';
+}
+function adminLogin(){
+ const m=modal('<h3>Default library admin</h3><p>Sign in with a Google account that can edit the shared folder.</p><label>Password<input id="admin-password" type="password" autocomplete="current-password"></label><p id="admin-error" role="status"></p><div class="row"><button id="admin-cancel">Cancel</button><button id="admin-enter" class="pri">Open default library</button></div>');
+ $('#admin-cancel',m).onclick=()=>m.remove();$('#admin-enter',m).onclick=async()=>{const password=$('#admin-password',m).value;if(!password)return;$('#admin-enter',m).disabled=true;try{await enterAdmin(password);m.remove();}catch(error){$('#admin-error',m).textContent=error.message;$('#admin-enter',m).disabled=false;}};
+}
+async function checkAdmin(){
+ if(!gtok||Date.now()>=gexp)await renewGoogle();
+ const response=await fetch(AUTH_API+'/admin/check',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+gtok},body:JSON.stringify({password:adminPassword})});const result=await response.json();if(!response.ok)throw Error(result.error||'Admin service unavailable.');
+}
+async function enterAdmin(password){
+ if(accountLock())throw Error('Wait for sync to finish.');
+ if(B)closeBook();clearTimeout(cloudTimer);adminPassword=password;
+ try{
+  await signIn(true,true,true);await checkAdmin();
+  const folder=await(await gj(`${GA}/${DEFAULT_FOLDER}?fields=id,capabilities(canEdit)`)).json();if(!folder.capabilities?.canEdit)throw Error('This Google account cannot edit the default folder. Use its owner account or grant Editor access.');
+  accountBusy=true;acct();adminMode=true;await loadDeviceLibrary(user.sub+'-default-admin');adminBaseline=await dbGet('meta','adminBaseline')||null;
+  if(!cloudDirty)await readAdminDefaults();updateAdminBanner();status('Editing default library — changes are drafts until published.');
+ }catch(error){if(adminMode){adminMode=false;await loadDeviceLibrary(user.sub);}adminPassword='';throw error;}
+ finally{accountBusy=false;acct();}
+}
+async function readAdminDefaults(){
+ const manifests=await listFiles(`'${q1(DEFAULT_FOLDER)}' in parents and name='default.json' and trashed=false`);if(manifests.length>1)throw Error('Keep only one default.json in the shared folder.');
+ let data={version:1,books:[],folders:[]};if(manifests[0])data=validateManifest(await(await gj(`${GA}/${manifests[0].id}?alt=media`)).json());
+ const repairs=defaultFileRepairs(data,await listDir(DEFAULT_FOLDER));data.books=data.books.map(b=>({...repairBookReferences(b,repairs),owner:user.email,src:'mine'}));data.dropped=[];data.hiddenDefaultFolders=[];
+ await applyManifest(data);adminBaseline=manifests[0]||null;await dbPut('meta','adminBaseline',adminBaseline);cloudDirty=false;await dbPut('meta','cloudDirty',false);
+}
+function defaultPublication(){
+ return {version:1,folders:[...folders],dropped:[],hiddenDefaultFolders:[],books:books.map(b=>{const {owner,drawings,pageMeta,thumb,importedGuest,...record}=b;return {...record,last:1,src:'default'};})};
+}
+async function publishDefaults(){
+ if(!adminMode)throw Error('Open the admin workspace first.');if(accountLock())throw Error('Wait for the current operation.');if(B)finishActiveDrawing();accountBusy=true;acct();clearTimeout(cloudTimer);
+ try{
+  await checkAdmin();
+  const current=await listFiles(`'${q1(DEFAULT_FOLDER)}' in parents and name='default.json' and trashed=false`);if(current.length>1)throw Error('Multiple default.json files found.');
+  if((current[0]?.id||null)!==(adminBaseline?.id||null)||(current[0]?.modifiedTime||null)!==(adminBaseline?.modifiedTime||null))throw Error('Default library changed since you opened it. Reload the published defaults in Admin settings before publishing. Your draft is kept.');
+  for(const b of books){
+   if(!b.driveId){const file=await dbGet('files',b.id);if(!file)throw Error('PDF missing: '+b.name);b.driveId=(await putFile({name:b.name+'.pdf',parents:[DEFAULT_FOLDER]},file)).id;await dbPut('books',b.id,b);}
+   for(const [page,link] of Object.entries(b.links||{}))for(const track of audioTracks(link))if(track.audio&&!track.driveAudioId){const audio=await dbGet('audio',track.audio);if(!audio)throw Error('Audio missing: '+(track.aname||b.name));track.driveAudioId=(await putFile({name:track.aname||b.name+'-'+page+'.mp3',parents:[DEFAULT_FOLDER]},audio)).id;await dbPut('books',b.id,b);}
+  }
+  for(const b of books)for(const link of Object.values(b.links||{})){const target=books.find(other=>other.id===link.toBookId);if(target?.driveId)link.toDriveId=target.driveId;}
+  // Recheck after uploads so another admin's publication is not silently replaced.
+  if(current[0]){const check=await(await gj(`${GA}/${current[0].id}?fields=id,modifiedTime`)).json();if(check.modifiedTime!==current[0].modifiedTime)throw Error('Another admin published changes. Your draft is kept; reload published defaults before publishing.');}
+  const revision=changeRevision;
+  const saved=await putFile({name:'default.json',...(!current[0]?{parents:[DEFAULT_FOLDER]}:{})},new Blob([JSON.stringify(defaultPublication(),null,2)],{type:'application/json'}),current[0]?.id);
+  adminBaseline=saved;await dbPut('meta','adminBaseline',saved);cloudDirty=changeRevision!==revision;await dbPut('meta','cloudDirty',cloudDirty);status('Default library published — '+books.length+' books.'+(cloudDirty?' Newer edits remain in your draft.':''));toast('Default library published');return books.length;
+ }finally{accountBusy=false;acct();}
+}
+async function exitAdmin(){
+ if(accountLock())throw Error('Wait for publishing to finish.');if(B)closeBook();clearTimeout(cloudTimer);accountBusy=true;
+ try{await dbPut('meta','cloudDirty',cloudDirty);adminMode=false;adminPassword='';await loadDeviceLibrary(user.sub);updateAdminBanner();status('Personal library restored. Admin drafts stay on this device.');}finally{accountBusy=false;acct();if(cloudDirty)scheduleCloud();}
+}
+function adminSettings(){
+ const m=modal('<h3>Default library admin</h3><p id="settings-status">'+esc(cloudState)+'</p><p>Use Import, folders and page audio tools to edit the default library. Publish when ready. Removing a book removes it from the published list; its Drive file is kept.</p><div class="row"><button id="apublish" class="pri">Publish default library</button><button id="areload">Reload published defaults</button><button id="aexit">Return to my library</button><button id="aclose">Close</button></div>');
+ $('#aclose',m).onclick=()=>m.remove();$('#apublish',m).onclick=()=>{m.remove();publishDefaults().catch(error=>{status(error.message);toast(error.message)});};$('#aexit',m).onclick=()=>{m.remove();exitAdmin().catch(error=>toast(error.message));};$('#areload',m).onclick=async()=>{if(accountLock())return;if(cloudDirty&&!confirm('Replace your unpublished admin draft with the published defaults?'))return;accountBusy=true;try{await readAdminDefaults();m.remove();status('Published defaults loaded.');}catch(error){toast(error.message)}finally{accountBusy=false;acct();}};
 }
 $('#syn').onclick=()=>{if(!cid()){return settings();}syncDrive(status,true).catch(error=>{status(error.message);toast(error.message);});};
 $('#usr').onclick=settings;$('#signout').onclick=signOut;
@@ -534,7 +601,7 @@ function persistSharedDrafts(){return dbPut('meta','sharedNoteDrafts',structured
 function sharedEditorStatus(){if(!B)return;const q=sharedDrafts[sharedDraftKey(B,detailPage)];$('#shared-review').hidden=!q?.conflict;$('#page-save-status').textContent=q?.conflict?'Someone else edited this page. Your draft is kept.':!sharedApi()?'Shared notes setup needed · drafts stay on this device':!B.driveId?'Upload this PDF to Drive before sharing notes':q?(sharedError?'Draft saved · '+sharedError:!user||!gtok||Date.now()>=gexp?'Draft saved · reconnect Google to publish':'Saving shared changes…'):sharedError||'Shared with everyone';}
 async function loadSharedNotes(){if(!sharedApi()){sharedEditorStatus();return}try{const response=await fetch(sharedApi()+'/notes',{cache:'no-store'});if(!response.ok)throw new Error('Shared notes unavailable');const data=await response.json();if(data.version!==1||!data.books||typeof data.books!=='object')throw new Error('Invalid shared notes');sharedData=data;sharedError='';if(B&&document.activeElement!==$('#page-tags')&&document.activeElement!==$('#page-notes'))refreshPageDetails();sharedEditorStatus();}catch(error){sharedError=error.message;sharedEditorStatus()}}
 async function saveSharedDetails(field){if(!B)return;const key=sharedDraftKey(B,detailPage),old=sharedDrafts[key],current=sharedPage(B,detailPage);const q=old||{bookId:B.id,driveId:B.driveId||'',page:detailPage,base:{tags:current.tags||'',notes:current.notes||''},data:{},rev:0};q.data[field]=field==='tags'?$('#page-tags').value:$('#page-notes').value;q.rev++;sharedDrafts[key]=q;await persistSharedDrafts();sharedEditorStatus();clearTimeout(sharedTimer);sharedTimer=setTimeout(flushSharedNotes,2500)}
-async function flushSharedNotes(){if(sharedSaving||!sharedApi()||!user||!gtok||Date.now()>=gexp)return;sharedSaving=true;const scope=DB;try{for(const [key,q] of Object.entries(sharedDrafts)){if(q.conflict)continue;const b=books.find(b=>b.id===q.bookId||q.driveId&&b.driveId===q.driveId);const bookKey=sharedBookKey(b);if(!bookKey)continue;const sent=structuredClone(q),patch={};for(const field of ['tags','notes'])if(Object.prototype.hasOwnProperty.call(sent.data,field)&&sent.data[field]!==sent.base[field])patch[field]=sent.data[field];if(!Object.keys(patch).length){delete sharedDrafts[key];continue}const response=await fetch(sharedApi()+'/notes',{method:'PATCH',headers:{'Content-Type':'application/json',Authorization:'Bearer '+gtok},body:JSON.stringify({bookKey,page:sent.page,patch,base:sent.base})});const result=await response.json();if(DB!==scope)return;if(response.status===409){q.conflict=result.current;continue}if(!response.ok)throw new Error(result.error||'Could not save shared notes');sharedData.books[bookKey]=sharedData.books[bookKey]||{pages:{}};sharedData.books[bookKey].pages[sent.page]=result.page;if(sharedDrafts[key]?.rev===sent.rev)delete sharedDrafts[key];else if(sharedDrafts[key])sharedDrafts[key].base={tags:result.page.tags||'',notes:result.page.notes||''};}sharedError='';}catch(error){sharedError=error.message;}finally{sharedSaving=false;if(DB===scope){await persistSharedDrafts();if(B){const q=sharedDrafts[sharedDraftKey(B,detailPage)];if(!q&&document.activeElement!==$('#page-tags')&&document.activeElement!==$('#page-notes'))refreshPageDetails();sharedEditorStatus()}}}}
+async function flushSharedNotes(){if(adminMode)return;if(sharedSaving||!sharedApi()||!user||!gtok||Date.now()>=gexp)return;sharedSaving=true;const scope=DB;try{for(const [key,q] of Object.entries(sharedDrafts)){if(q.conflict)continue;const b=books.find(b=>b.id===q.bookId||q.driveId&&b.driveId===q.driveId);const bookKey=sharedBookKey(b);if(!bookKey)continue;const sent=structuredClone(q),patch={};for(const field of ['tags','notes'])if(Object.prototype.hasOwnProperty.call(sent.data,field)&&sent.data[field]!==sent.base[field])patch[field]=sent.data[field];if(!Object.keys(patch).length){delete sharedDrafts[key];continue}const response=await fetch(sharedApi()+'/notes',{method:'PATCH',headers:{'Content-Type':'application/json',Authorization:'Bearer '+gtok},body:JSON.stringify({bookKey,page:sent.page,patch,base:sent.base})});const result=await response.json();if(DB!==scope)return;if(response.status===409){q.conflict=result.current;continue}if(!response.ok)throw new Error(result.error||'Could not save shared notes');sharedData.books[bookKey]=sharedData.books[bookKey]||{pages:{}};sharedData.books[bookKey].pages[sent.page]=result.page;if(sharedDrafts[key]?.rev===sent.rev)delete sharedDrafts[key];else if(sharedDrafts[key])sharedDrafts[key].base={tags:result.page.tags||'',notes:result.page.notes||''};}sharedError='';}catch(error){sharedError=error.message;}finally{sharedSaving=false;if(DB===scope){await persistSharedDrafts();if(B){const q=sharedDrafts[sharedDraftKey(B,detailPage)];if(!q&&document.activeElement!==$('#page-tags')&&document.activeElement!==$('#page-notes'))refreshPageDetails();sharedEditorStatus()}}}}
 $('#shared-review').onclick=()=>{if(!B)return;const key=sharedDraftKey(B,detailPage),q=sharedDrafts[key];if(!q?.conflict)return;const m=modal(`<h3>Shared notes changed</h3><p>Another person saved these changes. Your draft is still on this device.</p><label>Current tags<input readonly value="${esc(q.conflict.tags||'')}"></label><label>Current notes<textarea readonly>${esc(q.conflict.notes||'')}</textarea></label><div class="row"><button id="use-shared">Use shared version</button><button id="keep-draft">Publish my draft</button></div>`);$('#use-shared',m).onclick=async()=>{const k=sharedBookKey(B);sharedData.books[k]=sharedData.books[k]||{pages:{}};sharedData.books[k].pages[q.page]=q.conflict;delete sharedDrafts[key];await persistSharedDrafts();m.remove();refreshPageDetails()};$('#keep-draft',m).onclick=async()=>{q.base={tags:q.conflict.tags||'',notes:q.conflict.notes||''};delete q.conflict;await persistSharedDrafts();m.remove();flushSharedNotes()};};
 addEventListener('online',()=>{loadSharedNotes();flushSharedNotes()});setInterval(()=>{if(!document.hidden){loadSharedNotes();flushSharedNotes()}},30000);addEventListener('focus',()=>{loadSharedNotes();flushSharedNotes()});
 
@@ -613,14 +680,40 @@ async function go(ns,fast=false){
 function layout(){const st=$('#stage');if(!B)return;const aw=st.clientWidth*.94,ah=st.clientHeight*.94,ph=Math.min(ah,aw/(2*B.aspect));
   book.style.setProperty('--ph',ph+'px');book.style.setProperty('--pw',ph*B.aspect+'px');requestAnimationFrame(paintAllDrawings)}
 addEventListener('resize',layout);
+let bookOpenGeneration=0,pendingBookTask=null;
 async function openBook(id,page){
-  B=vis().find(b=>b.id===id);if(!B)return;B.links=B.links||{};
-  try{const f=await dbGet('files',id);if(f)pdf=await pdfjsLib.getDocument({data:await f.arrayBuffer()}).promise;else{if(!B.driveId)throw new Error('PDF missing');if(!gtok||Date.now()>=gexp)await renewGoogle();const meta=await(await gj(`${GA}/${B.driveId}?fields=id,mimeType`)).json();if(meta.mimeType.startsWith('application/vnd.google-apps.')){const blob=await downloadBook(meta);pdf=await pdfjsLib.getDocument({data:await blob.arrayBuffer()}).promise;}else pdf=await pdfjsLib.getDocument({url:`${GA}/${B.driveId}?alt=media&supportsAllDrives=true`,httpHeaders:{Authorization:'Bearer '+gtok},disableAutoFetch:true,disableStream:true,rangeChunkSize:262144}).promise;}const first=await pdf.getPage(1),v=first.getViewport({scale:1});B.aspect=v.width/v.height;B.pages=pdf.numPages;}catch(e){toast(e.message||'Could not open this book');B=null;return}
-  N=pdf.numPages;maxS=Math.floor(N/2);cache.clear();ret=[];busy=0;stopAudio();
+ const selected=vis().find(b=>b.id===id);if(!selected)return;
+ const request=++bookOpenGeneration,scope=DB,current=()=>request===bookOpenGeneration&&DB===scope&&B?.id===id;
+ if(pendingBookTask){pendingBookTask.destroy().catch(()=>{});pendingBookTask=null;}
+ if(pdf){pdf.destroy().catch(()=>{});pdf=null;}
+ B=selected;B.links=B.links||{};stopAudio();let documentPdf=null,task=null;
+ try{
+  const f=await dbGet('files',id);if(!current())return;
+  let source;
+  if(f){source={data:await f.arrayBuffer()};if(!current())return;}
+  else{
+   if(!selected.driveId)throw new Error('PDF missing');
+   if(!gtok||Date.now()>=gexp)await renewGoogle();if(!current())return;
+   const meta=await(await gj(`${GA}/${selected.driveId}?fields=id,mimeType`)).json();if(!current())return;
+   if(meta.mimeType.startsWith('application/vnd.google-apps.')){const blob=await downloadBook(meta);source={data:await blob.arrayBuffer()};if(!current())return;}
+   else source={url:`${GA}/${selected.driveId}?alt=media&supportsAllDrives=true`,httpHeaders:{Authorization:'Bearer '+gtok},disableAutoFetch:true,disableStream:true,rangeChunkSize:262144};
+  }
+  task=pdfjsLib.getDocument(source);pendingBookTask=task;documentPdf=await task.promise;
+  if(!current()){await documentPdf.destroy();return;}
+  const first=await documentPdf.getPage(1),v=first.getViewport({scale:1});
+  if(!current()){await documentPdf.destroy();return;}
+  // Sync may replace the book object while loading; update the current record only.
+  B.aspect=v.width/v.height;B.pages=documentPdf.numPages;pdf=documentPdf;
+  N=pdf.numPages;maxS=Math.floor(N/2);cache.clear();ret=[];busy=0;
   $('#ttl').textContent=B.name;$('#pn').max=N;$('#lib').classList.remove('show');$('#rdr').classList.add('show');layout();
-  s=spreadOf(Math.min(Math.max(page||B.last||1,1),N));book.style.transition='none';await setStatic(s);refreshPageDetails(page);if(!B.thumb){const owner=B;img(1).then(async src=>{if(!src)return;const image=new Image();image.onload=async()=>{const c=document.createElement('canvas');c.height=300;c.width=Math.round(300*owner.aspect);c.getContext('2d').drawImage(image,0,0,c.width,c.height);owner.thumb=c.toDataURL('image/jpeg',.75);await dbPut('books',owner.id,owner)};image.src=src}).catch(()=>{})}book.offsetWidth;book.style.transition='';navTarget=null;syncPageNav(page);wakePageNav();
+  s=spreadOf(Math.min(Math.max(page||B.last||1,1),N));book.style.transition='none';await setStatic(s);if(!current())return;
+  refreshPageDetails(page);
+  if(!B.thumb){const owner=B;img(1).then(src=>{if(!src||!current())return;const image=new Image();image.onload=async()=>{if(!current())return;const c=document.createElement('canvas');c.height=300;c.width=Math.round(300*owner.aspect);c.getContext('2d').drawImage(image,0,0,c.width,c.height);const live=books.find(b=>b.id===id);if(!live)return;live.thumb=c.toDataURL('image/jpeg',.75);await dbPut('books',id,live)};image.src=src}).catch(()=>{});}
+  book.offsetWidth;book.style.transition='';navTarget=null;syncPageNav(page);wakePageNav();
+ }catch(error){if(current()){toast(error.message||'Could not open this book');B=null;if(pdf===documentPdf)pdf=null;if(documentPdf)documentPdf.destroy().catch(()=>{});$('#rdr').classList.remove('show');$('#lib').classList.add('show');renderLib();}}
+ finally{if(pendingBookTask===task)pendingBookTask=null;}
 }
-function closeBook(){finishActiveDrawing();linkHistory=[];clearTimeout(navTimer);navTarget=null;stopAudio();if(B){saveBook(B)}B=null;if(pdf)pdf.destroy().catch(()=>{});pdf=null;$('#audio-dock').hidden=true;$('#rdr').classList.remove('show');$('#lib').classList.add('show');renderLib()}
+function closeBook(){bookOpenGeneration++;if(pendingBookTask){pendingBookTask.destroy().catch(()=>{});pendingBookTask=null;}finishActiveDrawing();linkHistory=[];clearTimeout(navTimer);navTarget=null;stopAudio();if(B){saveBook(B)}B=null;if(pdf)pdf.destroy().catch(()=>{});pdf=null;$('#audio-dock').hidden=true;$('#rdr').classList.remove('show');$('#lib').classList.add('show');renderLib()}
 $('#back').onclick=closeBook;
 $('#next').onclick=()=>go(s+1);$('#prev').onclick=()=>go(s-1);
 $('#pn').onkeydown=e=>{if(e.key==='Enter'){const p=Math.min(Math.max(+e.target.value||1,1),N);go(spreadOf(p));e.target.blur()}};
