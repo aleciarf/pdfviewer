@@ -90,3 +90,16 @@ Existing private Tags/Notes are not silently published. Their old copies stay in
 - SETUP.md: these instructions.
 
 Prepared code has been tested with mocked GitHub/Google services. It has not been deployed or tested against your live accounts.
+
+
+## Persistent Google login
+1. In Google Auth Platform → Clients, open the existing PDF Flip Web application client. Add this exact Authorized redirect URI:
+   https://pdf-flip-notes.phuongm1409.workers.dev/auth/callback
+2. On the existing pdf-flip-notes Worker, add encrypted secrets GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET. Keep GITHUB_TOKEN.
+3. Replace the entire Worker code with worker.js and click Deploy.
+4. Upload index.html, policy.html, and terms.html to the existing pdf-flip Cloudflare Pages project.
+5. Sign in once to grant renewal permission, then reload: your account should reconnect without a popup.
+
+The Worker uses PKCE and an encrypted, time-limited state. It encrypts the refresh credential using a key derived from the Google client secret. Only the encrypted credential is persisted in browser localStorage; it is a sensitive bearer credential. Access tokens stay in memory. No credentials go to GitHub. Signing out clears the browser credential; Google Account permission revocation invalidates access. Changing the client secret invalidates saved sessions. Sessions last up to 180 days; Google's Testing status normally limits Drive refresh tokens to seven days.
+
+The notes API remains at /notes. Google login adds /auth/start, /auth/callback and /auth/refresh. No KV binding is required.

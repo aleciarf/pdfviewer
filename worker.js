@@ -39,12 +39,40 @@ async function verifyGoogle(request) {
  const token=auth.slice(7);const response=await fetch('https://oauth2.googleapis.com/tokeninfo?access_token='+encodeURIComponent(token));if(!response.ok)return false;
  const info=await response.json();return (info.aud===CLIENT_ID||info.issued_to===CLIENT_ID)&&Number(info.expires_in)>0&&!!(info.sub||info.user_id);
 }
+// Refresh credentials are encrypted before leaving the Worker; never stored in GitHub.
+const b64url = bytes => btoa(String.fromCharCode(...bytes)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+const un64 = text => Uint8Array.from(atob(text.replace(/-/g,'+').replace(/_/g,'/')),c=>c.charCodeAt(0));
+async function authKey(env){return crypto.subtle.importKey('raw',await crypto.subtle.digest('SHA-256',new TextEncoder().encode('PDF-Flip-auth-v1:'+env.GOOGLE_CLIENT_SECRET)), 'AES-GCM',false,['encrypt','decrypt']);}
+async function seal(env,data){const iv=crypto.getRandomValues(new Uint8Array(12));return b64url(iv)+'.'+b64url(new Uint8Array(await crypto.subtle.encrypt({name:'AES-GCM',iv},await authKey(env),new TextEncoder().encode(JSON.stringify(data)))));}
+async function unseal(env,text,type){const [iv,data]=text.split('.');const value=JSON.parse(new TextDecoder().decode(await crypto.subtle.decrypt({name:'AES-GCM',iv:un64(iv)},await authKey(env),un64(data))));if(value.type!==type||value.exp<Date.now())throw Error('Session expired. Please sign in again.');return value;}
+async function googleToken(env,fields){const r=await fetch('https://oauth2.googleapis.com/token',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({client_id:env.GOOGLE_CLIENT_ID||CLIENT_ID,client_secret:env.GOOGLE_CLIENT_SECRET,...fields})});const data=await r.json();if(!r.ok)throw Error(data.error==='invalid_grant'?'Google permission expired. Please sign in again.':'Google could not renew access. Try again.');return data;}
+async function authRoute(request,env,reply){
+ const url=new URL(request.url),path=url.pathname,callback=url.origin+'/auth/callback';
+ if(!env.GOOGLE_CLIENT_SECRET)return reply({error:'Add GOOGLE_CLIENT_SECRET to this Worker.'},503);
+ if(path==='/auth/start'&&request.method==='POST'){
+  const input=await request.json();if(!/^[a-f0-9-]{36}$/.test(input.nonce))return reply({error:'Invalid login request'},400);
+  const verifier=b64url(crypto.getRandomValues(new Uint8Array(32))),challenge=b64url(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(verifier))));
+  const state=await seal(env,{type:'state',nonce:input.nonce,verifier,exp:Date.now()+600000});
+  const args=new URLSearchParams({client_id:env.GOOGLE_CLIENT_ID||CLIENT_ID,redirect_uri:callback,response_type:'code',scope:'openid email profile https://www.googleapis.com/auth/drive.file'+(input.extra?' https://www.googleapis.com/auth/drive.readonly':''),access_type:'offline',prompt:'consent',include_granted_scopes:'true',state,code_challenge:challenge,code_challenge_method:'S256'});
+  return reply({url:'https://accounts.google.com/o/oauth2/v2/auth?'+args});
+ }
+ if(path==='/auth/callback'&&request.method==='GET'){
+  let message;try{const state=await unseal(env,url.searchParams.get('state')||'','state');if(url.searchParams.has('error'))throw Error('Google sign-in cancelled.');const t=await googleToken(env,{code:url.searchParams.get('code'),redirect_uri:callback,grant_type:'authorization_code',code_verifier:state.verifier});if(!t.refresh_token)throw Error('No renewal permission received. Please sign in again.');message={type:'pdf-flip-auth',nonce:state.nonce,access_token:t.access_token,expires_in:t.expires_in,scope:t.scope,session:await seal(env,{type:'session',refresh:t.refresh_token,exp:Date.now()+180*86400000})};}catch{message={type:'pdf-flip-auth',error:'Google sign-in failed. Check redirect URI and Worker credentials, then try again.'};}
+  const payload=JSON.stringify(message).replace(/</g,'\\u003c');return new Response('<!doctype html><title>PDF Flip sign in</title><p>You can close this window.</p><script>if(window.opener){window.opener.postMessage('+payload+','+JSON.stringify(ORIGIN)+');window.close();}</script>',{headers:{'Content-Type':'text/html;charset=utf-8','Cache-Control':'no-store','Referrer-Policy':'no-referrer','Content-Security-Policy':"default-src 'none'; script-src 'unsafe-inline'; frame-ancestors 'none'"}});
+ }
+ if(path==='/auth/refresh'&&request.method==='POST'){
+  let session;try{session=await unseal(env,(request.headers.get('Authorization')||'').replace(/^Bearer /,''),'session');}catch{return reply({error:'Session expired. Please sign in again.'},401)}
+  try{const t=await googleToken(env,{refresh_token:session.refresh,grant_type:'refresh_token'});return reply({access_token:t.access_token,expires_in:t.expires_in,scope:t.scope});}catch(error){return reply({error:error.message},error.message.includes('permission expired')?401:502);}
+ }
+ return reply({error:'Not found'},404);
+}
 export default {async fetch(request,env) {
  const origin=request.headers.get('Origin'),allowed=env.ALLOWED_ORIGIN||ORIGIN;
- const cors={'Access-Control-Allow-Origin':allowed,'Access-Control-Allow-Methods':'GET,PATCH,OPTIONS','Access-Control-Allow-Headers':'Authorization,Content-Type','Vary':'Origin','Cache-Control':'no-store'};
+ const cors={'Access-Control-Allow-Origin':allowed,'Access-Control-Allow-Methods':'GET,POST,PATCH,OPTIONS','Access-Control-Allow-Headers':'Authorization,Content-Type','Vary':'Origin','Cache-Control':'no-store'};
  const reply=(data,status=200)=>Response.json(data,{status,headers:cors});
  if(origin&&origin!==allowed)return reply({error:'Origin not allowed'},403);
  if(request.method==='OPTIONS')return new Response(null,{status:204,headers:cors});
+ if(new URL(request.url).pathname.startsWith('/auth/')){try{return await authRoute(request,env,reply)}catch{return reply({error:'Google login service unavailable. Check Worker credentials.'},502)}}
  if(!env.GITHUB_TOKEN)return reply({error:'Add GITHUB_TOKEN as an encrypted Worker secret.'},503);
  try {
   if(new URL(request.url).pathname!=='/notes')return reply({error:'Not found'},404);

@@ -266,22 +266,35 @@ function acct(){
  $('#imp').disabled=$('#nf').disabled=!!accountLock();refreshConnection();renderLib();
 }
 addEventListener('online',()=>{refreshConnection();if(user&&cloudDirty&&gtok&&Date.now()<gexp)scheduleCloud();});addEventListener('offline',refreshConnection);setInterval(refreshConnection,15000);
-function gAuth(interactive=true,extra=false,force=false){return new Promise((res,rej)=>{
- if(!force&&gtok&&Date.now()<gexp&&(!extra||readAllowed))return res(gtok);
- if(!cid())return rej(new Error('Google sign-in needs PDF Flip’s Client ID. Open the account popup → More options → Site setup.'));
- if(!window.google?.accounts?.oauth2)return rej(new Error('Google sign-in is still loading. Check your connection and try again.'));
- if(authBusy)return rej(new Error('A Google sign-in window is already open.'));
- authBusy=true;acct();
- const finish=()=>{authBusy=false;acct();};
- try{google.accounts.oauth2.initTokenClient({client_id:cid(),scope:SCOPE+(extra?' '+READ_SCOPE:''),include_granted_scopes:true,
- callback:r=>{finish();if(r.error)return rej(new Error(r.error_description||r.error));gtok=r.access_token;connectionFailed=false;gexp=Date.now()+(Number(r.expires_in)-60)*1000;readAllowed=google.accounts.oauth2.hasGrantedAllScopes(r,READ_SCOPE);res(gtok);},
- error_callback:e=>{finish();rej(new Error(e.type==='popup_closed'?'Sign-in cancelled.':e.type==='popup_failed_to_open'?'Allow Google popups and try again.':'Google sign-in failed.'));}
- }).requestAccessToken({prompt:force?'select_account':interactive?'':'none',...(!force&&user?.email?{hint:user.email}:{})});}catch(error){finish();rej(error);}
-});}
+const AUTH_API='https://pdf-flip-notes.phuongm1409.workers.dev';
+let renewal=null;
+function acceptGoogleToken(r){gtok=r.access_token;gexp=Date.now()+Math.max(30,Number(r.expires_in)-90)*1000;readAllowed=(r.scope||'').split(' ').includes(READ_SCOPE);connectionFailed=false;refreshConnection();return gtok;}
+async function renewGoogle(){
+ if(renewal)return renewal;
+ const session=gget('pdf-flip-session');if(!session)throw Error('Sign in to connect Google.');
+ renewal=(async()=>{const r=await fetch(AUTH_API+'/auth/refresh',{method:'POST',headers:{Authorization:'Bearer '+session}});const data=await r.json();if(!r.ok){if(r.status===401)gset('pdf-flip-session','');throw Error(data.error||'Google connection unavailable.');}if(gget('pdf-flip-session')!==session)throw Error('Account session changed.');return acceptGoogleToken(data);})();
+ try{return await renewal}finally{renewal=null}
+}
+async function gAuth(interactive=true,extra=false,force=false){
+ if(!force&&gtok&&Date.now()<gexp&&(!extra||readAllowed))return gtok;
+ if(!force&&gget('pdf-flip-session')&&(!extra||readAllowed)){try{return await renewGoogle()}catch(error){if(!interactive)throw error}}
+ if(!interactive)throw Error('Sign in to connect Google.');
+ if(authBusy)throw Error('A sign-in window is already open.');
+ const popup=window.open('about:blank','pdf-flip-google','width=520,height=680');if(!popup)throw Error('Allow popups to sign in.');
+ authBusy=true;acct();const nonce=crypto.randomUUID();
+ try{return await new Promise((resolve,reject)=>{
+  let timer;const cleanup=()=>{removeEventListener('message',receive);clearInterval(timer);};
+  const receive=e=>{if(e.origin!==AUTH_API||e.source!==popup||e.data?.type!=='pdf-flip-auth')return;if(e.data.error){cleanup();reject(Error(e.data.error));return}if(e.data.nonce!==nonce)return;cleanup();gset('pdf-flip-session',e.data.session);resolve(acceptGoogleToken(e.data));};
+  addEventListener('message',receive);timer=setInterval(()=>{if(popup.closed){cleanup();reject(Error('Sign-in window closed.'));}},1000);
+  fetch(AUTH_API+'/auth/start',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({nonce,extra:extra||readAllowed})}).then(async r=>{const data=await r.json();if(!r.ok)throw Error(data.error||'Google sign-in unavailable.');popup.location.href=data.url;}).catch(error=>{cleanup();popup.close();reject(error)});
+ });}finally{authBusy=false;acct()}
+}
+addEventListener('focus',()=>{if(user&&gget('pdf-flip-session')&&Date.now()>=gexp-120000)renewGoogle().then(()=>{if(cloudDirty)scheduleCloud();flushSharedNotes();}).catch(()=>refreshConnection());});
+setInterval(()=>{if(user&&gget('pdf-flip-session')&&Date.now()>=gexp-120000)renewGoogle().then(()=>{if(cloudDirty)scheduleCloud();flushSharedNotes();}).catch(()=>refreshConnection());},60000);
 async function gj(url,o={},attempt=0){
- if(!gtok||Date.now()>=gexp)throw new Error('Google connection expired. Click Sign in or Sync to reconnect. Your device copy is kept.');
+ if(!gtok||Date.now()>=gexp)await renewGoogle();
  const token=gtok;let r;try{r=await fetch(url,{...o,headers:{...(o.headers||{}),Authorization:'Bearer '+token}});}catch(error){connectionFailed=true;refreshConnection();throw error;}connectionFailed=false;refreshConnection();
- if(r.status===401){gtok='';status('Reconnect Google to sync');throw new Error('Google connection expired. Please reconnect.');}
+ if(r.status===401){gtok='';if(attempt===0){await renewGoogle();return gj(url,o,attempt+1)}throw new Error('Google permission unavailable. Please sign in again.');}
  if([429,500,502,503,504].includes(r.status)&&attempt<3&&(!o.method||o.method==='GET')){await new Promise(resolve=>setTimeout(resolve,Math.min(8000,600*2**attempt+Math.random()*300)));return gj(url,o,attempt+1)}
  if(!r.ok){let message='';try{message=(await r.json()).error.message}catch(e){}const error=new Error(message||'Google Drive returned HTTP '+r.status);error.httpStatus=r.status;throw error;}return r;
 }
@@ -302,7 +315,7 @@ async function signIn(interactive=true,extra=false,force=false){
 async function signOut(){
  if(accountLock())return toast('Wait for the current sync to finish.');
  if(B)closeBook();clearTimeout(cloudTimer);document.querySelectorAll('.mdl').forEach(m=>m.remove());
- accountBusy=true;acct();try{gset('pdf-flip-account','');gtok='';gexp=0;user=null;myRoot='';readAllowed=false;await loadDeviceLibrary('guest');status('Signed out — Drive files and device copies kept');}catch(error){toast(error.message);}finally{accountBusy=false;acct();}
+ accountBusy=true;acct();try{gset('pdf-flip-account','');gset('pdf-flip-session','');gtok='';gexp=0;user=null;myRoot='';readAllowed=false;await loadDeviceLibrary('guest');status('Signed out — Drive files and device copies kept');}catch(error){toast(error.message);}finally{accountBusy=false;acct();}
 }
 const q1=t=>String(t).replace(/\\/g,'\\\\').replace(/'/g,"\\'");
 async function listFiles(query,fields='id,name,mimeType,modifiedTime,appProperties'){
@@ -333,7 +346,7 @@ async function walk(id,path,acc,mine,seen=new Set()){
 function scheduleCloud(){
  changeRevision++;cloudDirty=true;dbPut('meta','cloudDirty',true).catch(()=>{});clearTimeout(cloudTimer);
  if(!user||syncing||accountBusy)return;
- if(!gtok||Date.now()>=gexp){status('Saved on this device — reconnect Google to autosave to Drive');return}
+ if(!gtok||Date.now()>=gexp){renewGoogle().then(()=>scheduleCloud()).catch(error=>status('Saved on this device — '+error.message));return}
  status('Saving changes…');cloudTimer=setTimeout(()=>saveLibrary().catch(error=>{status('Saved on device — '+error.message);}),2000);
 }
 function plainBook(b){const {thumb,pageMeta,...record}=b;return record}
@@ -359,7 +372,7 @@ async function applyManifest(data){
  books=records;folders=data.folders;dropped=data.dropped||[];hiddenDefaultFolders=data.hiddenDefaultFolders||[];if(B){const fresh=books.find(b=>b.id===B.id);if(fresh)B=fresh;paintAllDrawings()}renderLib();
 }
 async function saveLibrary(){
- if(syncing||accountBusy)return;if(!user)throw new Error('Sign in with Google first.');if(!gtok||Date.now()>=gexp)throw new Error('Reconnect Google to save to Drive');
+ if(syncing||accountBusy)return;if(!user)throw new Error('Sign in with Google first.');if(!gtok||Date.now()>=gexp)await renewGoogle();
  const run=async()=>{syncing=1;clearTimeout(cloudTimer);acct();const revision=changeRevision;let succeeded=false;
  try{const folder=await root();
  for(const b of vis()){
@@ -545,7 +558,7 @@ function updateAudioControls(){const a=audio,d=Number.isFinite(a?.duration)?a.du
 function stopAudio(){audioRequest++;if(audio){audio.pause();URL.revokeObjectURL(audio.src);audio.removeAttribute('src');audio.load();audio=null}updateAudioControls()}
 function visibleAudioTracks(){return B?pagesOf(s).filter(Boolean).flatMap(page=>audioTracks(B.links?.[page]).map((track,index)=>({page,index,track}))):[]}
 function refreshAudioPlayer(){const available=visibleAudioTracks(),picker=$('#audio-track');$('#audio-dock').hidden=false;$('#audio-dock').classList.toggle('no-audio',!available.length);$('#no-audio').hidden=!!available.length;picker.hidden=!available.length;picker.innerHTML=available.map(({page,index})=>`<option value="${page}:${index}">Page ${page} · Audio ${index+1}</option>`).join('');if(!available.length){stopAudio();layout();return}const current=available.find(x=>String(x.page)===audio?._n&&(x.track.audio||x.track.driveAudioId)===audio?._key);if(current)picker.value=current.page+':'+current.index;else{picker.value=available[0].page+':'+available[0].index;loadPageAudio(available[0].page,false,available[0].index).catch(error=>toast(error.message))}layout()}
-async function loadPageAudio(n,autoplay,index=0){stopAudio();const request=audioRequest,owner=B,track=audioTracks(owner?.links?.[n])[index],key=track?.audio||track?.driveAudioId;if(!key)return;$('#audio-track').value=n+':'+index;let bl=key&&await dbGet('audio',key);if(!bl){const track=audioTracks(owner?.links?.[n])[index];if(track?.driveAudioId){if(!gtok||Date.now()>=gexp)return toast('Reconnect Google to play Drive audio');bl=await(await gj(`${GA}/${track.driveAudioId}?alt=media`)).blob();}}if(request!==audioRequest||B!==owner)return;if(!bl)return toast('Audio file missing');const a=new Audio(URL.createObjectURL(bl));audio=a;a._n=String(n);a._key=key;a.preload='metadata';a.playbackRate=audioRate;['loadedmetadata','durationchange','timeupdate','play','pause','ended'].forEach(event=>a.addEventListener(event,()=>{if(audio===a)updateAudioControls()}));a.addEventListener('error',()=>{if(audio===a)toast('Could not play this audio file')});updateAudioControls();if(autoplay)a.play().catch(()=>toast('Tap Play to start audio'))}
+async function loadPageAudio(n,autoplay,index=0){stopAudio();const request=audioRequest,owner=B,track=audioTracks(owner?.links?.[n])[index],key=track?.audio||track?.driveAudioId;if(!key)return;$('#audio-track').value=n+':'+index;let bl=key&&await dbGet('audio',key);if(!bl){const track=audioTracks(owner?.links?.[n])[index];if(track?.driveAudioId){if(!gtok||Date.now()>=gexp)await renewGoogle();bl=await(await gj(`${GA}/${track.driveAudioId}?alt=media`)).blob();}}if(request!==audioRequest||B!==owner)return;if(!bl)return toast('Audio file missing');const a=new Audio(URL.createObjectURL(bl));audio=a;a._n=String(n);a._key=key;a.preload='metadata';a.playbackRate=audioRate;['loadedmetadata','durationchange','timeupdate','play','pause','ended'].forEach(event=>a.addEventListener(event,()=>{if(audio===a)updateAudioControls()}));a.addEventListener('error',()=>{if(audio===a)toast('Could not play this audio file')});updateAudioControls();if(autoplay)a.play().catch(()=>toast('Tap Play to start audio'))}
 $('#audio-track').onchange=e=>{const [page,index]=e.target.value.split(':').map(Number);loadPageAudio(page,!!audio&&!audio.paused,index).catch(error=>toast(error.message))};
 $('#audio-play').onclick=()=>{if(!audio)return;if(audio.paused)audio.play().catch(()=>toast('Could not play this audio file'));else audio.pause()};
 $('#audio-seek').oninput=e=>{if(audio&&Number.isFinite(audio.duration)){audio.currentTime=Math.min(audio.duration,+e.target.value);updateAudioControls()}};
@@ -566,7 +579,7 @@ function layout(){const st=$('#stage');if(!B)return;const aw=st.clientWidth*.94,
 addEventListener('resize',layout);
 async function openBook(id,page){
   B=vis().find(b=>b.id===id);if(!B)return;B.links=B.links||{};
-  try{const f=await dbGet('files',id);if(f)pdf=await pdfjsLib.getDocument({data:await f.arrayBuffer()}).promise;else{if(!B.driveId)throw new Error('PDF missing');if(!gtok||Date.now()>=gexp)throw new Error('Reconnect Google to open this Drive PDF');const meta=await(await gj(`${GA}/${B.driveId}?fields=id,mimeType`)).json();if(meta.mimeType.startsWith('application/vnd.google-apps.')){const blob=await downloadBook(meta);pdf=await pdfjsLib.getDocument({data:await blob.arrayBuffer()}).promise;}else pdf=await pdfjsLib.getDocument({url:`${GA}/${B.driveId}?alt=media&supportsAllDrives=true`,httpHeaders:{Authorization:'Bearer '+gtok},disableAutoFetch:true,disableStream:true,rangeChunkSize:262144}).promise;}const first=await pdf.getPage(1),v=first.getViewport({scale:1});B.aspect=v.width/v.height;B.pages=pdf.numPages;}catch(e){toast(e.message||'Could not open this book');B=null;return}
+  try{const f=await dbGet('files',id);if(f)pdf=await pdfjsLib.getDocument({data:await f.arrayBuffer()}).promise;else{if(!B.driveId)throw new Error('PDF missing');if(!gtok||Date.now()>=gexp)await renewGoogle();const meta=await(await gj(`${GA}/${B.driveId}?fields=id,mimeType`)).json();if(meta.mimeType.startsWith('application/vnd.google-apps.')){const blob=await downloadBook(meta);pdf=await pdfjsLib.getDocument({data:await blob.arrayBuffer()}).promise;}else pdf=await pdfjsLib.getDocument({url:`${GA}/${B.driveId}?alt=media&supportsAllDrives=true`,httpHeaders:{Authorization:'Bearer '+gtok},disableAutoFetch:true,disableStream:true,rangeChunkSize:262144}).promise;}const first=await pdf.getPage(1),v=first.getViewport({scale:1});B.aspect=v.width/v.height;B.pages=pdf.numPages;}catch(e){toast(e.message||'Could not open this book');B=null;return}
   N=pdf.numPages;maxS=Math.floor(N/2);cache.clear();ret=[];busy=0;stopAudio();
   $('#ttl').textContent=B.name;$('#pn').max=N;$('#lib').classList.remove('show');$('#rdr').classList.add('show');layout();
   s=spreadOf(Math.min(Math.max(page||B.last||1,1),N));book.style.transition='none';await setStatic(s);refreshPageDetails(page);if(!B.thumb){const owner=B;img(1).then(async src=>{if(!src)return;const image=new Image();image.onload=async()=>{const c=document.createElement('canvas');c.height=300;c.width=Math.round(300*owner.aspect);c.getContext('2d').drawImage(image,0,0,c.width,c.height);owner.thumb=c.toDataURL('image/jpeg',.75);await dbPut('books',owner.id,owner)};image.src=src}).catch(()=>{})}book.offsetWidth;book.style.transition='';navTarget=null;syncPageNav(page);wakePageNav();
@@ -641,8 +654,8 @@ $('#lnk').onclick=()=>{if(accountLock())return toast('Wait for sync to finish.')
 
 /* ---------- boot ---------- */
 function rememberedAccount(){try{const a=JSON.parse(gget('pdf-flip-account')||'null');return a&&typeof a.sub==='string'&&/^[A-Za-z0-9_-]+$/.test(a.sub)&&typeof a.email==='string'?{sub:a.sub,email:a.email,name:typeof a.name==='string'?a.name:'',given_name:typeof a.given_name==='string'?a.given_name:''}:null}catch(e){return null}}
-(async()=>{accountBusy=true;acct();try{const remembered=rememberedAccount();if(remembered){user=remembered;await loadDeviceLibrary(remembered.sub);status('Account remembered — device library loaded. Reconnect Google to sync Drive.');}else{books=await dbAll('books');folders=(await dbGet('meta','folders'))||[];dropped=(await dbGet('meta','dropped'))||[];hiddenDefaultFolders=(await dbGet('meta','hiddenDefaultFolders'))||[];}}catch(error){toast('Device storage unavailable: '+error.message);}finally{accountBusy=false;acct();await loadSharedDrafts();loadSharedNotes();}})();
-// Google access is requested only after a user clicks Sign in or Sync.
+(async()=>{accountBusy=true;acct();try{const remembered=rememberedAccount();if(remembered){user=remembered;await loadDeviceLibrary(remembered.sub);status('Device library loaded — restoring Google connection…');}else{books=await dbAll('books');folders=(await dbGet('meta','folders'))||[];dropped=(await dbGet('meta','dropped'))||[];hiddenDefaultFolders=(await dbGet('meta','hiddenDefaultFolders'))||[];}}catch(error){toast('Device storage unavailable: '+error.message);}finally{accountBusy=false;acct();await loadSharedDrafts();loadSharedNotes();if(user&&gget('pdf-flip-session')){try{await signIn(false);if(cloudDirty)scheduleCloud();}catch(error){status('Device library ready — '+error.message);}}}})();
+// Restore renewable Google access without reopening the sign-in popup.
 function showLegal(){if(location.hash==='#privacy'){location.replace('policy.html');return;}if(location.hash==='#terms'){location.replace('terms.html');return;}const key=location.hash.slice(1);document.body.dataset.legal=['privacy','terms'].includes(key)?key:'';}
 addEventListener('hashchange',showLegal);showLegal();
 </script>
