@@ -41,10 +41,10 @@ input,select,textarea{background:var(--panel);border:1px solid var(--line);borde
 .empty-msg{color:var(--muted);text-align:center;margin-top:80px}
 .stage{flex:1;background:var(--stage);display:flex;align-items:center;justify-content:center;overflow:hidden;min-height:0;position:relative}
 .persp{perspective:2600px}
-.book{position:relative;width:calc(var(--pw)*2);height:var(--ph);transform-style:preserve-3d;transition:transform .85s cubic-bezier(.4,.1,.2,1)}
-.book:before{content:"";position:absolute;left:50%;top:0;bottom:0;width:60px;margin-left:-30px;background:linear-gradient(90deg,#0000,#0003 48%,#0004 50%,#0003 52%,#0000);z-index:6;pointer-events:none;transition:opacity .4s}
+.book{position:relative;width:calc(var(--pw)*2);height:var(--ph);transform-style:preserve-3d;transition:transform .38s cubic-bezier(.3,.05,.2,1)}
+.book:after{content:"";position:absolute;inset:0;box-shadow:0 7px 22px #0003;border-radius:4px;pointer-events:none;transform:translateZ(-2px);transition:left .38s,right .38s}.book.single:has(.pg.l.empty):after{left:50%}.book.single:has(.pg.r.empty):after{right:50%}.book:before{content:"";position:absolute;left:50%;top:0;bottom:0;width:60px;margin-left:-30px;background:linear-gradient(90deg,#0000,#0003 48%,#0004 50%,#0003 52%,#0000);z-index:6;pointer-events:none;transition:opacity .4s}
 .book.single:before{opacity:0}
-.pg{position:absolute;top:0;width:50%;height:100%;background:#fff;box-shadow:0 8px 28px #0005;overflow:hidden;cursor:pointer;user-select:none}
+.pg{position:absolute;top:0;width:50%;height:100%;background:#fff;box-shadow:none;overflow:hidden;cursor:pointer;user-select:none}
 .pg.l{left:0;border-radius:4px 0 0 4px}.pg.r{left:50%;border-radius:0 4px 4px 0}
 .pg.empty{background:none;box-shadow:none;pointer-events:none}
 .pg img,.face img{width:100%;height:100%;display:block;object-fit:fill;pointer-events:none}
@@ -58,11 +58,11 @@ input,select,textarea{background:var(--panel);border:1px solid var(--line);borde
 .fold{background:linear-gradient(135deg,#fff,#cfc8b8);clip-path:polygon(100% 0,0 100%,0 0)}
 .bd{position:absolute;top:8px;z-index:8;display:flex;gap:6px}.pg.r .bd{right:8px}.pg.l .bd{left:8px}
 .bd button{padding:3px 9px;font-size:12px;background:#fffd;color:#222;border-color:#0003}
-.flip{position:absolute;top:0;width:50%;height:100%;transform-style:preserve-3d;transition:transform .85s cubic-bezier(.4,.1,.2,1);z-index:5}
+.flip{position:absolute;top:0;width:50%;height:100%;transform-style:preserve-3d;transition:transform .38s cubic-bezier(.3,.05,.2,1);z-index:5}
 .flip.f{left:50%;transform-origin:left center}.flip.f.go{transform:rotateY(-180deg)}
 .flip.b{left:0;transform-origin:right center}.flip.b.go{transform:rotateY(180deg)}
 .face{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;background:#fff;overflow:hidden}
-.face:after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,#0000 70%,#0002)}
+.face:after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,#0000 70%,#0001);opacity:0;transition:opacity .12s}.flip.go .face:after{opacity:1}
 .bk{transform:rotateY(180deg)}.bk:after{background:linear-gradient(270deg,#0000 70%,#0002)}
 .rb{display:flex;align-items:center;gap:6px}.rb input[type=number]{width:70px;text-align:center}
 .ttl{font-weight:600;max-width:30vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -85,6 +85,11 @@ input,select,textarea{background:var(--panel);border:1px solid var(--line);borde
 .connection-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#929292;flex:none}.connection-dot[data-state=connected]{background:#36a768}.connection-dot[data-state=disconnected]{background:#d95353}.connection-dot[data-state=signed-out]{background:#929292}#usr{display:inline-flex;align-items:center;gap:8px;max-width:220px}#usr[hidden],#syn[hidden],#signout[hidden]{display:none!important}#usr>span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
 .rdr{position:relative}.audio-dock{flex:0 0 calc(114px + env(safe-area-inset-bottom,0px));min-height:calc(114px + env(safe-area-inset-bottom,0px));padding:8px 14px calc(8px + env(safe-area-inset-bottom,0px));background:var(--stage);display:flex;align-items:center;justify-content:center}.audio-dock[hidden]{display:flex!important;visibility:visible}.audio-dock[hidden] .audio-pill{visibility:hidden}.audio-pill{width:min(100%,460px);display:flex;align-items:center;gap:12px;border:1px solid var(--line);border-radius:50px;background:var(--panel);padding:12px 18px;box-shadow:0 5px 18px #0001}.audio-headphones{width:22px;height:22px;flex:none;fill:none;stroke:currentColor;stroke-width:2}.audio-pill button{min-width:42px;min-height:42px;border:0;border-radius:50%;background:var(--bg);padding:8px}.audio-pill .audio-play{background:var(--accent);color:#fff}.audio-timeline{flex:1;min-width:0}.audio-timeline input{display:block;width:100%;padding:0;height:22px;accent-color:var(--accent);border:0}#audio-track{width:100%;padding:2px 6px;font-size:12px;margin-bottom:4px}#audio-track[hidden]{display:none}.audio-times{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}@media(max-width:400px){.audio-pill{gap:8px;padding:10px 12px}.audio-headphones{width:18px;height:18px}}
+
+.reader-workspace{display:flex;flex:1;min-height:0;overflow:hidden}.reader-sidebar{width:280px;flex:0 0 280px;overflow:auto;background:var(--panel);border-left:1px solid var(--line);padding:18px}.reader-sidebar .audio-dock,.reader-sidebar .audio-dock[hidden]{display:flex!important;visibility:visible;min-height:112px;flex:none;padding:0 0 18px;background:var(--panel);align-items:center}.reader-sidebar .audio-pill{width:100%;border:0;box-shadow:none;border-radius:0;padding:0;flex-wrap:wrap;gap:10px}.reader-sidebar .audio-timeline{flex:1 0 100%;order:2}.reader-sidebar #audio-speed{margin-left:auto}.reader-sidebar .page-details{border-top:1px solid var(--line);padding-top:18px;display:grid;gap:9px}.page-details label{font-size:13px;color:var(--muted)}.page-details label:first-child{display:flex;align-items:center;justify-content:space-between}.page-details input,.page-details textarea{width:100%;font:inherit}.page-details textarea{resize:vertical;min-height:120px}.page-details #page-save-status{font-size:11px;color:var(--muted)}.cover:has(img[src=""]){background:var(--panel);min-height:180px}.cover img[src=""]{visibility:hidden}
+@media(max-width:760px){.reader-workspace{flex-direction:column}.reader-sidebar{width:100%;flex:0 0 230px;display:flex;gap:18px;border-left:0;border-top:1px solid var(--line);padding:14px;overflow:auto}.reader-sidebar .audio-dock{width:180px;flex:0 0 180px}.reader-sidebar .page-details{border-top:0;border-left:1px solid var(--line);padding:0 0 0 14px;min-width:210px;flex:1}.page-details textarea{min-height:70px}.page-details label:first-child{gap:10px}}
+.reader-icon{width:20px;height:20px;display:block;fill:currentColor;flex:none}.bd .reader-icon{width:16px;height:16px}.flip{will-change:transform}.face{backface-visibility:hidden;-webkit-backface-visibility:hidden}@media(prefers-reduced-motion:reduce){.book,.flip{transition-duration:.01s!important}}
+@media(max-width:480px){.reader-sidebar{flex:0 0 260px;flex-direction:column;gap:12px}.reader-sidebar .audio-dock{width:100%;min-height:86px;flex:0 0 86px;padding-bottom:0}.reader-sidebar .page-details{border-left:0;border-top:1px solid var(--line);padding:12px 0 0;min-width:0;flex:none}.page-details textarea{min-height:70px}}
 </style>
 </head>
 <body>
@@ -119,13 +124,16 @@ input,select,textarea{background:var(--panel);border:1px solid var(--line);borde
     <button id="lnk">🔗 Link</button>
     <button class="th" aria-label="Toggle dark mode"><span>☀️</span><span>🌙</span><b></b></button>
   </div>
-  <div class="stage" id="stage"><div class="persp"><div class="book single" id="book"><div class="pg l empty" id="L"></div><div class="pg r empty" id="R"></div></div></div></div>
-  <div class="audio-dock" id="audio-dock" hidden><div class="audio-pill" role="group" aria-label="Book audio">
-    <svg class="audio-headphones" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 14v-3a9 9 0 0 1 18 0v3M3 13h4v8H5a2 2 0 0 1-2-2zm18 0h-4v8h2a2 2 0 0 0 2-2z"/></svg>
-    <button class="audio-play" id="audio-play" aria-label="Play audio">▶</button>
+  <div class="reader-workspace"><div class="stage" id="stage"><div class="persp"><div class="book single" id="book"><div class="pg l empty" id="L"></div><div class="pg r empty" id="R"></div></div></div></div>
+  <aside class="reader-sidebar"><div class="audio-dock" id="audio-dock" hidden><div class="audio-pill" role="group" aria-label="Book audio">
+    <svg class="reader-icon" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21,12.424V11A9,9,0,0,0,3,11v1.424A5,5,0,0,0,5,22a2,2,0,0,0,2-2V14a2,2,0,0,0-2-2V11a7,7,0,0,1,14,0v1a2,2,0,0,0-2,2v6a2,2,0,0,0,2,2,5,5,0,0,0,2-9.576ZM5,20H5a3,3,0,0,1,0-6Zm14,0V14a3,3,0,0,1,0,6Z"/></svg>
+
+    <button class="audio-play" id="audio-play" aria-label="Play audio"><svg class="reader-icon" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20.494,7.968l-9.54-7A5,5,0,0,0,3,5V19a5,5,0,0,0,7.957,4.031l9.54-7a5,5,0,0,0,0-8.064Zm-1.184,6.45-9.54,7A3,3,0,0,1,5,19V5A2.948,2.948,0,0,1,6.641,2.328,3.018,3.018,0,0,1,8.006,2a2.97,2.97,0,0,1,1.764.589l9.54,7a3,3,0,0,1,0,4.836Z"/></svg>
+</button>
     <div class="audio-timeline"><select id="audio-track" aria-label="Choose audio track" hidden></select><input id="audio-seek" type="range" min="0" max="0" step="0.1" value="0" aria-label="Audio position" disabled><div class="audio-times"><span id="audio-current">0:00</span><span id="audio-duration">0:00</span></div></div>
     <button id="audio-speed" aria-label="Playback speed: 1 times">1×</button>
   </div></div>
+  <div class="page-details"><label>Page <select id="detail-page" aria-label="Page for tags and notes"></select></label><label for="page-tags">Tags</label><input id="page-tags" placeholder="Names or keywords, separated by commas" autocomplete="off"><label for="page-notes">Notes</label><textarea id="page-notes" rows="7" placeholder="Write a note for this page…"></textarea><span id="page-save-status" role="status">Saved automatically</span></div></aside></div>
 </section>
 
 <section class="legal" id="privacy"><nav><a href="#">← PDF Flip</a> · <a href="terms.html">Terms</a></nav><h1>PDF Flip — Privacy Policy</h1><p>Effective date: 15 October 2026</p>
@@ -170,7 +178,7 @@ function renderLib(){
   const groups=[...folders,''].map(f=>({f,items:vis().filter(b=>(b.folder||'')===f)})).filter(g=>g.f||g.items.length);
   const body=$('#libbody');
   if(!vis().length&&!folders.length){body.innerHTML='<div class="empty-msg">No books yet.<br>Import a PDF to start, or sign in with Google to load your own library.<br>The shared default library loads when you sign in.</div>';return}
-  body.innerHTML=groups.map(g=>`<div class="fh">📁 ${g.f?esc(g.f):'Unfiled'} <small>${g.items.length}</small><span class="sp"></span>${g.f?`<button data-df="${esc(g.f)}" title="Delete folder">✕</button>`:''}</div><div class="grid">${g.items.map(b=>`<div class="card" data-id="${b.id}"><button class="more" data-e="${b.id}">⋯</button><div class="cover" style="aspect-ratio:${b.aspect}"><img src="${b.thumb}"><div class="prog"><i style="width:${Math.round(((b.last||1)/b.pages)*100)}%"></i></div></div><div class="t">${esc(b.name)}<small>p.${b.last||1} / ${b.pages}</small></div></div>`).join('')||'<span style="color:var(--muted)">Empty folder</span>'}</div>`).join('');
+  body.innerHTML=groups.map(g=>`<div class="fh">📁 ${g.f?esc(g.f):'Unfiled'} <small>${g.items.length}</small><span class="sp"></span>${g.f?`<button data-df="${esc(g.f)}" title="Delete folder">✕</button>`:''}</div><div class="grid">${g.items.map(b=>`<div class="card" data-id="${b.id}"><button class="more" data-e="${b.id}">⋯</button><div class="cover" style="aspect-ratio:${b.aspect}"><img src="${b.thumb||'data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%22210%22%20height%3D%22297%22%3E%3Crect%20width%3D%22210%22%20height%3D%22297%22%20fill%3D%22%23e7e1d5%22/%3E%3Cpath%20d%3D%22M20%200v297%22%20stroke%3D%22%23c9bfae%22/%3E%3Ctext%20x%3D%22115%22%20y%3D%22155%22%20text-anchor%3D%22middle%22%20font-family%3D%22sans-serif%22%20font-size%3D%2224%22%20fill%3D%22%237a7063%22%3EPDF%3C/text%3E%3C/svg%3E'}"><div class="prog"><i style="width:${Math.round(((b.last||1)/b.pages)*100)}%"></i></div></div><div class="t">${esc(b.name)}<small>p.${b.last||1} / ${b.pages}</small></div></div>`).join('')||'<span style="color:var(--muted)">Empty folder</span>'}</div>`).join('');
 }
 $('#libbody').onclick=e=>{
   const ed=e.target.closest('[data-e]'),df=e.target.closest('[data-df]'),c=e.target.closest('.card');
@@ -223,8 +231,9 @@ const SCOPE='openid email profile https://www.googleapis.com/auth/drive.file';
 const READ_SCOPE='https://www.googleapis.com/auth/drive.readonly';
 const gget=k=>{try{return localStorage.getItem(k)||''}catch(e){return ''}},gset=(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}};
 const cid=()=>GOOGLE_CLIENT_ID||gget('dcd-client-id');
+let cloudBase=null,changeRevision=0,cloudDirty=false;
 let gtok='',gexp=0,user=null,myRoot='',syncing=0,accountBusy=false,cloudTimer=0,cloudVersion=null,cloudState='',readAllowed=false,authBusy=false;
-const autoEnabled=()=>gget('dcd-auto:'+(user?.sub||'guest'))!=='false';
+const autoEnabled=()=>true;
 const vis=()=>books.filter(b=>!b.owner||(user&&b.owner===user.email));
 function status(text){cloudState=text;const label=$('#settings-status');if(label)label.textContent=text;refreshConnection();}
 function accountLock(){return syncing||accountBusy||authBusy;}
@@ -243,7 +252,7 @@ function acct(){
  $('#signout').hidden=true;$('#syn').disabled=!!accountLock();$('#usr').disabled=!!accountLock();
  $('#imp').disabled=$('#nf').disabled=!!accountLock();refreshConnection();renderLib();
 }
-addEventListener('online',refreshConnection);addEventListener('offline',refreshConnection);setInterval(refreshConnection,15000);
+addEventListener('online',()=>{refreshConnection();if(user&&cloudDirty&&gtok&&Date.now()<gexp)scheduleCloud();});addEventListener('offline',refreshConnection);setInterval(refreshConnection,15000);
 function gAuth(interactive=true,extra=false,force=false){return new Promise((res,rej)=>{
  if(!force&&gtok&&Date.now()<gexp&&(!extra||readAllowed))return res(gtok);
  if(!cid())return rej(new Error('Google sign-in needs PDF Flip’s Client ID. Open the account popup → More options → Site setup.'));
@@ -256,15 +265,16 @@ function gAuth(interactive=true,extra=false,force=false){return new Promise((res
  error_callback:e=>{finish();rej(new Error(e.type==='popup_closed'?'Sign-in cancelled.':e.type==='popup_failed_to_open'?'Allow Google popups and try again.':'Google sign-in failed.'));}
  }).requestAccessToken({prompt:force?'select_account':interactive?'':'none',...(!force&&user?.email?{hint:user.email}:{})});}catch(error){finish();rej(error);}
 });}
-async function gj(url,o={}){
+async function gj(url,o={},attempt=0){
  if(!gtok||Date.now()>=gexp)throw new Error('Google connection expired. Click Sign in or Sync to reconnect. Your device copy is kept.');
  const token=gtok;let r;try{r=await fetch(url,{...o,headers:{...(o.headers||{}),Authorization:'Bearer '+token}});}catch(error){connectionFailed=true;refreshConnection();throw error;}connectionFailed=false;refreshConnection();
  if(r.status===401){gtok='';status('Reconnect Google to sync');throw new Error('Google connection expired. Please reconnect.');}
- if(!r.ok){let message='';try{message=(await r.json()).error.message}catch(e){}throw new Error(message||'Google Drive returned HTTP '+r.status);}return r;
+ if([429,500,502,503,504].includes(r.status)&&attempt<3&&(!o.method||o.method==='GET')){await new Promise(resolve=>setTimeout(resolve,Math.min(8000,600*2**attempt+Math.random()*300)));return gj(url,o,attempt+1)}
+ if(!r.ok){let message='';try{message=(await r.json()).error.message}catch(e){}const error=new Error(message||'Google Drive returned HTTP '+r.status);error.httpStatus=r.status;throw error;}return r;
 }
 async function loadDeviceLibrary(scope){
  const old=await DB;old.close();DB=openBookDB(scope);await DB;
- books=await dbAll('books');folders=(await dbGet('meta','folders'))||[];dropped=(await dbGet('meta','dropped'))||[];cloudVersion=(await dbGet('meta','cloudVersion'))||null;hiddenDefaultFolders=(await dbGet('meta','hiddenDefaultFolders'))||[];
+ books=await dbAll('books');folders=(await dbGet('meta','folders'))||[];dropped=(await dbGet('meta','dropped'))||[];cloudVersion=(await dbGet('meta','cloudVersion'))||null;hiddenDefaultFolders=(await dbGet('meta','hiddenDefaultFolders'))||[];cloudBase=(await dbGet('meta','cloudBase'))||null;cloudDirty=!!(await dbGet('meta','cloudDirty'));
  renderLib();
 }
 async function signIn(interactive=true,extra=false,force=false){
@@ -292,9 +302,9 @@ async function findOrMake(name,parent){
  return(await(await gj(GA+'?fields=id',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,mimeType:'application/vnd.google-apps.folder',parents:[parent]})})).json()).id;
 }
 const root=async()=>myRoot||(myRoot=await findOrMake(MY_ROOT,'root'));
-async function putFile(metadata,blob,id){
+async function putFile(metadata,blob,id,etag){
  const boundary='dcd'+crypto.randomUUID(),body=new Blob(['--'+boundary+'\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n',JSON.stringify(metadata),'\r\n--'+boundary+'\r\nContent-Type: '+(blob.type||'application/octet-stream')+'\r\n\r\n',blob,'\r\n--'+boundary+'--\r\n']);
- return(await gj('https://www.googleapis.com/upload/drive/v3/files'+(id?'/'+id:'')+'?uploadType=multipart&fields=id,modifiedTime',{method:id?'PATCH':'POST',headers:{'Content-Type':'multipart/related; boundary='+boundary},body})).json();
+ return(await gj('https://www.googleapis.com/upload/drive/v3/files'+(id?'/'+id:'')+'?uploadType=multipart&fields=id,modifiedTime',{method:id?'PATCH':'POST',headers:{'Content-Type':'multipart/related; boundary='+boundary,...(etag?{'If-Match':etag}:{})},body})).json();
 }
 async function upload(b,f){
  if(b.driveId)return;
@@ -308,54 +318,65 @@ async function walk(id,path,acc,mine,seen=new Set()){
  for(const f of await listDir(id)){if(f.mimeType==='application/vnd.google-apps.folder')await walk(f.id,path?path+' / '+f.name:f.name,acc,mine,seen);else if(['application/pdf','application/vnd.google-apps.document','application/vnd.google-apps.presentation'].includes(f.mimeType))acc.push({f,path,mine});}return acc;
 }
 function scheduleCloud(){
- clearTimeout(cloudTimer);if(!user||!autoEnabled()||syncing||accountBusy)return;
- status('Changes saved on this device');cloudTimer=setTimeout(()=>saveLibrary().catch(error=>{status(error.message);toast(error.message);}),1800);
+ changeRevision++;cloudDirty=true;dbPut('meta','cloudDirty',true).catch(()=>{});clearTimeout(cloudTimer);
+ if(!user||syncing||accountBusy)return;
+ if(!gtok||Date.now()>=gexp){status('Saved on this device — reconnect Google to autosave to Drive');return}
+ status('Saving changes…');cloudTimer=setTimeout(()=>saveLibrary().catch(error=>{status('Saved on device — '+error.message);}),2000);
+}
+function plainBook(b){const {thumb,...record}=b;return record}
+function localManifest(){return {version:1,folders:[...folders],dropped:[...dropped],hiddenDefaultFolders:[...hiddenDefaultFolders],books:vis().map(plainBook)}}
+const sameValue=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
+function mergeValue(base,local,remote){
+ if(sameValue(local,base))return remote;if(sameValue(remote,base)||sameValue(local,remote))return local;
+ if(local&&remote&&typeof local==='object'&&typeof remote==='object'&&!Array.isArray(local)&&!Array.isArray(remote)){
+  const out={};for(const key of new Set([...Object.keys(base||{}),...Object.keys(local),...Object.keys(remote)])){if(['__proto__','prototype','constructor'].includes(key))continue;const v=mergeValue(base?.[key],local[key],remote[key]);if(v!==undefined)out[key]=v}return out;
+ }return local;
+}
+function mergeLibraries(base,local,remote){
+ const key=b=>b.driveId||b.id, lm=new Map(local.books.map(b=>[key(b),b])),rm=new Map(remote.books.map(b=>[key(b),b])),bm=new Map((base?.books||[]).map(b=>[key(b),b]));
+ const dropped=[...new Set([...(local.dropped||[]),...(remote.dropped||[])])],hiddenDefaultFolders=[...new Set([...(local.hiddenDefaultFolders||[]),...(remote.hiddenDefaultFolders||[])])],books=[];
+ for(const id of new Set([...lm.keys(),...rm.keys()])){if(dropped.includes(id))continue;const l=lm.get(id),r=rm.get(id);if(l&&r)books.push(mergeValue(bm.get(id),l,r));else if(l)books.push(l);else if(r)books.push(r)}
+ const baseFolders=new Set(base?.folders||[]),removed=new Set([...(baseFolders)].filter(f=>!local.folders.includes(f)||!remote.folders.includes(f)));
+ return {version:1,books,dropped,hiddenDefaultFolders,folders:[...new Set([...local.folders,...remote.folders])].filter(f=>!removed.has(f)&&!hiddenDefaultFolders.includes(f))};
+}
+function remoteRecord(record){const local=books.find(b=>b.driveId===record.driveId||b.id===record.id);return {...record,id:local?.id||record.id,owner:record.src==='default'?undefined:user.email,thumb:local?.thumb||'',aspect:record.aspect||.707,pages:record.pages||1,links:record.links||{}}}
+async function applyManifest(data){
+ const records=data.books.filter(b=>!(data.dropped||[]).includes(b.driveId)).map(remoteRecord);const db=await DB;
+ await new Promise((resolve,reject)=>{const t=db.transaction(['books','meta'],'readwrite');t.objectStore('books').clear();for(const b of records)t.objectStore('books').put(b,b.id);for(const [key,value] of Object.entries({folders:data.folders,dropped:data.dropped||[],hiddenDefaultFolders:data.hiddenDefaultFolders||[]}))t.objectStore('meta').put(value,key);t.oncomplete=resolve;t.onerror=()=>reject(t.error);t.onabort=()=>reject(t.error)});
+ books=records;folders=data.folders;dropped=data.dropped||[];hiddenDefaultFolders=data.hiddenDefaultFolders||[];if(B){const fresh=books.find(b=>b.id===B.id);if(fresh)B=fresh}renderLib();
 }
 async function saveLibrary(){
- if(syncing||accountBusy)return; if(!user)throw new Error('Sign in with Google first.');
- if(!gtok||Date.now()>=gexp)throw new Error('Reconnect Google before saving. Your device copy is kept.');
- syncing=1;clearTimeout(cloudTimer);acct();
- try{
- const folder=await root(),files=await listFiles(`'${q1(folder)}' in parents and name='library.json' and trashed=false`);
- if(files.length>1)throw new Error('Multiple library.json files found in PDF Flip Library. Keep one before saving.');
- const existing=files[0];if(existing&&(!cloudVersion||cloudVersion.id!==existing.id||cloudVersion.modifiedTime!==existing.modifiedTime))throw new Error('Your Drive library changed. Load from Drive before saving. Device changes are kept.');
- const snapshot=structuredClone(vis());
- for(const b of snapshot){
-  if(!b.driveId){status('Uploading '+b.name+'…');const blob=await dbGet('files',b.id);if(!blob)throw new Error('Local PDF missing: '+b.name);await upload(b,blob);const current=books.find(x=>x.id===b.id);if(current)Object.assign(current,{driveId:b.driveId,owner:user.email,src:'mine'});}
-  for(const [page,pageLink] of Object.entries(b.links||{}))for(const link of audioTracks(pageLink))if(link.audio){const blob=await dbGet('audio',link.audio);if(!blob&&!link.driveAudioId)throw new Error('Attached audio is missing for '+b.name);if(blob&&!link.driveAudioId){status('Uploading audio for '+b.name+'…');const file=await putFile({name:link.aname||'page-'+page+'-audio',parents:[folder]},blob);link.driveAudioId=file.id;const current=books.find(x=>x.id===b.id);const currentTrack=audioTracks(current?.links?.[page]).find(t=>t.audio===link.audio);if(currentTrack){currentTrack.driveAudioId=file.id;await dbPut('books',current.id,current);}}}
+ if(syncing||accountBusy)return;if(!user)throw new Error('Sign in with Google first.');if(!gtok||Date.now()>=gexp)throw new Error('Reconnect Google to save to Drive');
+ const run=async()=>{syncing=1;clearTimeout(cloudTimer);acct();const revision=changeRevision;let succeeded=false;
+ try{const folder=await root();
+ for(const b of vis()){
+  if(!b.driveId){const blob=await dbGet('files',b.id);if(!blob)throw new Error('Local PDF missing: '+b.name);await upload(b,blob)}
+  for(const [page,pageLink] of Object.entries(b.links||{}))for(const track of audioTracks(pageLink))if(track.audio&&!track.driveAudioId){const blob=await dbGet('audio',track.audio);if(!blob)throw new Error('Missing audio for '+b.name);const saved=await putFile({name:track.aname||'page-'+page+'-audio',parents:[folder]},blob);track.driveAudioId=saved.id;await dbPut('books',b.id,b)}
  }
- // Detect edits made while PDFs and audio were uploading; save those in the next pass.
- const before=JSON.stringify(vis());
- const payload={version:1,folders:[...folders],dropped:[...dropped],hiddenDefaultFolders:[...hiddenDefaultFolders],books:snapshot.map(b=>{const {thumb,...record}=b;return record;})};
- const saved=await putFile({name:'library.json',...(!existing?{parents:[folder]}:{})},new Blob([JSON.stringify(payload)],{type:'application/json'}),existing?.id);
- cloudVersion=saved;await dbPut('meta','cloudVersion',saved);status('Saved to your Google Drive');
- if(before!==JSON.stringify(vis())||JSON.stringify(snapshot.map(b=>[b.id,b.name,b.folder,b.last,b.links]))!==JSON.stringify(vis().map(b=>[b.id,b.name,b.folder,b.last,b.links])))setTimeout(scheduleCloud,0);
- return snapshot.length;
- }finally{syncing=0;acct();}
+ const local=structuredClone(localManifest());let payload,existing;
+ for(let attempt=0;attempt<3;attempt++){
+  const files=await listFiles(`'${q1(folder)}' in parents and name='library.json' and trashed=false`);if(files.length>1)throw new Error('Multiple library.json files found. Keep one in your private library.');existing=files[0];
+  const response=existing?await gj(`${GA}/${existing.id}?alt=media`):null,etag=response?.headers?.get('ETag');const remote=response?validateManifest(await response.json()):null;payload=remote?mergeLibraries(cloudBase,local,remote):local;
+  if(existing){const check=await(await gj(`${GA}/${existing.id}?fields=id,modifiedTime`)).json();if(check.modifiedTime!==existing.modifiedTime)continue;}
+  let saved;try{saved=await putFile({name:'library.json',...(!existing?{parents:[folder]}:{})},new Blob([JSON.stringify(payload)],{type:'application/json'}),existing?.id,etag);}catch(error){if(error.httpStatus===412)continue;throw error}
+  cloudVersion=saved;cloudBase=payload;await dbPut('meta','cloudVersion',saved);await dbPut('meta','cloudBase',payload);
+  if(changeRevision===revision){await applyManifest(payload);cloudDirty=false;await dbPut('meta','cloudDirty',false)}
+  status('Saved to your Google Drive');succeeded=true;return payload.books.length;
+ }throw new Error('Drive is busy; autosave will retry shortly.');
+ }finally{syncing=0;acct();if(changeRevision!==revision||!succeeded&&gtok&&Date.now()<gexp)cloudTimer=setTimeout(()=>saveLibrary().catch(error=>status('Saved on device — '+error.message)),succeeded?2000:10000);}
+ };
+ return navigator.locks?navigator.locks.request('pdf-flip-save:'+user.sub,run):run();
 }
 function validateManifest(data){
  if(!data||data.version!==1||!Array.isArray(data.books)||!Array.isArray(data.folders)||data.books.length>2000)throw new Error('Invalid PDF Flip library file.');
- const ids=new Set();for(const b of data.books){if(!b||typeof b.id!=='string'||!/^[\w-]+$/.test(b.id)||ids.has(b.id)||typeof b.name!=='string'||typeof b.driveId!=='string'||!/^[\w-]+$/.test(b.driveId))throw new Error('Invalid book entry in Drive.');ids.add(b.id);if(b.links&&typeof b.links!=='object')throw new Error('Invalid page links.');for(const [page,link] of Object.entries(b.links||{})){if(!/^\d+$/.test(page)||!link||typeof link!=='object'||(link.driveAudioId&&!/^[\w-]+$/.test(link.driveAudioId))||(link.audio&&typeof link.audio!=='string'))throw new Error('Invalid audio or page link.');if(link.audios!==undefined&&(!Array.isArray(link.audios)||link.audios.length>100||link.audios.some(t=>!t||typeof t!=='object'||(t.audio&&typeof t.audio!=='string')||(t.driveAudioId&&!/^[\w-]+$/.test(t.driveAudioId))||(!t.audio&&!t.driveAudioId))))throw new Error('Invalid audio tracks.');if(link.to&&(!Number.isInteger(link.to)||link.to<1))throw new Error('Invalid page destination.');}}
+ const ids=new Set();for(const b of data.books){if(!b||typeof b.id!=='string'||!/^[\w-]+$/.test(b.id)||ids.has(b.id)||typeof b.name!=='string'||typeof b.driveId!=='string'||!/^[\w-]+$/.test(b.driveId))throw new Error('Invalid book entry in Drive.');ids.add(b.id);if(b.pageMeta&&(typeof b.pageMeta!=='object'||Array.isArray(b.pageMeta)||Object.entries(b.pageMeta).some(([p,m])=>!/^\d+$/.test(p)||!m||typeof m!=='object'||(m.tags!==undefined&&typeof m.tags!=='string')||(m.notes!==undefined&&typeof m.notes!=='string'))))throw new Error('Invalid page tags or notes.');if(b.links&&typeof b.links!=='object')throw new Error('Invalid page links.');for(const [page,link] of Object.entries(b.links||{})){if(!/^\d+$/.test(page)||!link||typeof link!=='object'||(link.driveAudioId&&!/^[\w-]+$/.test(link.driveAudioId))||(link.audio&&typeof link.audio!=='string'))throw new Error('Invalid audio or page link.');if(link.audios!==undefined&&(!Array.isArray(link.audios)||link.audios.length>100||link.audios.some(t=>!t||typeof t!=='object'||(t.audio&&typeof t.audio!=='string')||(t.driveAudioId&&!/^[\w-]+$/.test(t.driveAudioId))||(!t.audio&&!t.driveAudioId))))throw new Error('Invalid audio tracks.');if(link.to&&(!Number.isInteger(link.to)||link.to<1))throw new Error('Invalid page destination.');}}
  if(data.folders.some(f=>typeof f!=='string')||(data.dropped&&(!Array.isArray(data.dropped)||data.dropped.some(x=>typeof x!=='string')))||(data.hiddenDefaultFolders&&(!Array.isArray(data.hiddenDefaultFolders)||data.hiddenDefaultFolders.some(x=>typeof x!=='string'))))throw new Error('Invalid folder data.');return data;
 }
 async function downloadBook(file){const url=file.mimeType?.startsWith('application/vnd.google-apps.')?`${GA}/${file.id}/export?mimeType=application/pdf`:`${GA}/${file.id}?alt=media&supportsAllDrives=true`;return new Blob([await(await gj(url)).blob()],{type:'application/pdf'});}
 async function restoreLibrary(say){
- const folder=await root(),files=await listFiles(`'${q1(folder)}' in parents and name='library.json' and trashed=false`);
- if(files.length>1)throw new Error('Multiple library.json files found. Keep one before loading.');
- if(!files.length)return false;
+ const folder=await root(),files=await listFiles(`'${q1(folder)}' in parents and name='library.json' and trashed=false`);if(files.length>1)throw new Error('Multiple library.json files found.');if(!files.length)return false;
  const file=files[0],data=validateManifest(await(await gj(`${GA}/${file.id}?alt=media`)).json());
- const staged=[];
- for(const remote of data.books.filter(b=>!(data.dropped||[]).includes(b.driveId))){say('Loading '+remote.name+'…');let local=books.find(b=>b.driveId===remote.driveId),blob=local&&await dbGet('files',local.id);
- if(!blob){const meta=await(await gj(`${GA}/${remote.driveId}?fields=id,mimeType`)).json();blob=await downloadBook(meta);}
- const extra={...remote,owner:remote.src==='default'?undefined:user.email};
- // Generate a local cover without committing anything until every file is available.
- const record=await preparePdf(blob,remote.name,remote.folder,extra);record.last=remote.last||1;record.links=remote.links||{};
- const audios=[];for(const pageLink of Object.values(record.links))for(const link of audioTracks(pageLink))if(link.driveAudioId){const audioBlob=await(await gj(`${GA}/${link.driveAudioId}?alt=media`)).blob();link.audio=link.audio||record.id+':'+link.driveAudioId;audios.push([link.audio,audioBlob]);}
- staged.push({record,blob,audios});
- }
- const latest=await(await gj(`${GA}/${file.id}?fields=id,modifiedTime`)).json();if(latest.modifiedTime!==file.modifiedTime)throw new Error('Library changed during loading. Try again.');
- const db=await DB;await new Promise((resolve,reject)=>{const t=db.transaction(['books','files','audio','meta'],'readwrite');for(const key of ['books','files','audio'])t.objectStore(key).clear();for(const item of staged){t.objectStore('books').put(item.record,item.record.id);t.objectStore('files').put(item.blob,item.record.id);for(const [id,blob] of item.audios)t.objectStore('audio').put(blob,id);}t.objectStore('meta').put(data.folders,'folders');t.objectStore('meta').put(data.dropped||[],'dropped');t.objectStore('meta').put(data.hiddenDefaultFolders||[],'hiddenDefaultFolders');t.objectStore('meta').put(latest,'cloudVersion');t.oncomplete=resolve;t.onerror=()=>reject(t.error);t.onabort=()=>reject(t.error);});
- books=staged.map(x=>x.record);folders=data.folders;dropped=data.dropped||[];hiddenDefaultFolders=data.hiddenDefaultFolders||[];cloudVersion=latest;return true;
+ const merged=cloudDirty?mergeLibraries(cloudBase,localManifest(),data):data;await applyManifest(merged);cloudBase=data;cloudVersion=file;await dbPut('meta','cloudBase',data);await dbPut('meta','cloudVersion',file);say('Library ready — PDFs open on demand');return true;
 }
 // Shared data is read only. All preferences and deletions go to the user's library.json.
 async function loadDefaultLibrary(say){
@@ -367,12 +388,9 @@ async function loadDefaultLibrary(say){
  for(const f of data.folders)addFolder(defaultPath(f));
  for(const remote of data.books){
   if(dropped.includes(remote.driveId)||books.some(b=>b.driveId===remote.driveId))continue;
-  say('Loading shared book '+remote.name+'…');
-  const meta=await(await gj(`${GA}/${remote.driveId}?fields=id,mimeType`)).json(),blob=await downloadBook(meta);
   const path=defaultPath(remote.folder),folder=hiddenDefaultFolders.includes(path)?'':path;
-  const record=await preparePdf(blob,remote.name,folder,{id:'default-'+remote.driveId,driveId:remote.driveId,src:'default',links:structuredClone(remote.links||{})});
-  for(const [page,pageLink] of Object.entries(record.links))for(const [index,link] of audioTracks(pageLink).entries())if(link.driveAudioId){const audioBlob=await(await gj(`${GA}/${link.driveAudioId}?alt=media`)).blob();link.audio=record.id+':'+page+':'+index;await dbPut('audio',link.audio,audioBlob);}else if(link.audio){delete link.audio;}
-  if(folder)addFolder(folder);await dbPut('files',record.id,blob);await dbPut('books',record.id,record);books.push(record);count++;
+  const record=remoteRecord({...remote,id:'default-'+remote.driveId,src:'default',folder});
+  if(folder)addFolder(folder);await dbPut('books',record.id,record);books.push(record);count++;
  }
  await dbPut('meta','folders',folders);renderLib();return count;
 }
@@ -380,11 +398,10 @@ async function syncDrive(say=()=>{},interactive=true,includeDefault=true){
  if(accountLock())return 0;clearTimeout(cloudTimer);accountBusy=true;acct();let completed=false;
  try{await signIn(interactive,true);syncing=1;accountBusy=false;acct();
  // Restore the user's deletion history before considering any shared items.
- const hadLocal=vis().length>0||dropped.length>0||hiddenDefaultFolders.length>0;
- if(!hadLocal)await restoreLibrary(say);
- let items=await walk(await root(),'',[],true);
+ const restored=await restoreLibrary(say);
+ let items=restored?[]:await walk(await root(),'',[],true);
  items=items.filter(x=>!books.some(b=>b.driveId===x.f.id)&&!dropped.includes(x.f.id));let count=0;
- for(const {f,path} of items){say('Importing '+f.name+'…');const blob=await downloadBook(f);if(path&&!folders.includes(path)){folders.push(path);await dbPut('meta','folders',folders);}await addPdf(blob,f.name,path,{driveId:f.id,owner:user.email,src:'mine'});count++;}
+ for(const {f,path} of items){say('Importing '+f.name+'…');if(path&&!folders.includes(path)){folders.push(path);await dbPut('meta','folders',folders);}const record=remoteRecord({id:'drive-'+f.id,name:f.name.replace(/\.pdf$/i,''),folder:path,driveId:f.id,mimeType:f.mimeType,src:'mine',links:{}});await dbPut('books',record.id,record);books.push(record);count++;}
  if(readAllowed){try{count+=await loadDefaultLibrary(say);}catch(error){toast('Shared library: '+error.message);status('Connected — shared library could not load: '+error.message);return count;}}
  else toast('Allow read-only Drive access to load the shared library.');
  status('Connected — '+count+' new book(s); device edits kept');completed=true;return count;
@@ -392,7 +409,7 @@ async function syncDrive(say=()=>{},interactive=true,includeDefault=true){
 }
 async function loadCloudLibrary(){
  if(accountLock())return;if(!user)return toast('Sign in with Google first.');
- if(!confirm('Load the saved Drive library? This replaces this account’s device library, progress and page links.'))return;
+ 
  if(B)closeBook();clearTimeout(cloudTimer);syncing=1;acct();
  try{const loaded=await restoreLibrary(status);status(loaded?'Loaded your Drive library':'No saved library.json yet. Use Save library first.');renderLib();}catch(error){status(error.message);toast(error.message);}finally{syncing=0;acct();}
 }
@@ -413,7 +430,7 @@ function settings(){
  <div class="settings-content">
  <section class="settings-account"><div class="settings-account-row"><div class="settings-avatar">${SIGN_IN_ICON}</div><div class="settings-identity"><strong>${user?esc(user.name||'Google account'):'Connect your Google Drive'}</strong><p class="settings-note">${user?esc(user.email):'Your library, across devices'}</p><p class="settings-note" id="connection-detail">${connectionState()==='connected'?'Connected':user?'Not connected':'Not signed in'}</p></div></div>
  ${user?'<button id="gout" class="settings-account-action">Sign out</button>':`<button id="gsign" class="settings-account-action bi" aria-label="Sign in with Google">${SIGN_IN_ICON}<span>Sign in</span></button>`}</section>
- <section class="settings-sync"><div class="settings-section-label">Library sync</div><div class="settings-toggle-row"><div><strong>Autosave</strong><p class="settings-note">Keep changes in your Drive</p></div><label class="settings-switch" aria-label="Automatically save library changes"><input type="checkbox" id="auto-drive" ${autoEnabled()?'checked':''}><span></span></label></div>
+ <section class="settings-sync"><div class="settings-section-label">Library sync</div><div class="settings-toggle-row"><div><strong>Autosave</strong><p class="settings-note">Keep changes in your Drive</p></div><label class="settings-switch" aria-label="Automatically save library changes"><input type="checkbox" id="auto-drive" checked disabled><span></span></label></div>
  <div class="settings-sync-actions"><button class="pri bi" id="gsave" ${user?'':'disabled'}>↑ Save now</button><button id="gload" ${user?'':'disabled'}>↓ Load</button></div>
  <p class="settings-note settings-sync-note" id="settings-status" role="status" aria-live="polite">${user?esc(cloudState||'Your library is ready to sync.'):'Sign in to sync. Your device copy stays saved.'}</p></section>
  <details class="settings-more"><summary>More options <span aria-hidden="true">⌄</span></summary><div class="settings-more-content">
@@ -447,8 +464,8 @@ function parseQ(v){const m=v.match(/^(.*?)(?:\s+(?:p|pg|page|trang)\.?)?[\s,:#.-
 let sugList=[],sugI=0;
 function suggest(){const {q,page}=parseQ($('#qj').value),box=$('#sug');
   if(!q){box.hidden=true;sugList=[];return}
-  sugList=vis().map(b=>({b,s:score(q,b.name)})).filter(x=>x.s>.35).sort((a,b)=>b.s-a.s).slice(0,5).map(x=>({b:x.b,page}));sugI=0;
-  box.hidden=false;box.innerHTML=sugList.length?sugList.map((x,i)=>`<div data-i="${i}" class="${i?'':'on'}">📖 ${esc(x.b.name)} <small style="color:var(--muted)">→ p.${x.page||x.b.last||1}</small></div>`).join(''):'<div style="color:var(--muted)">No close match</div>'}
+  const hits=[];for(const b of vis()){hits.push({b,page,s:score(q,b.name)});for(const [p,meta] of Object.entries(b.pageMeta||{})){const tags=String(meta.tags||'').split(',').map(norm).filter(Boolean);if(tags.length)hits.push({b,page:+p,s:Math.max(...tags.map(t=>score(q,t))),tag:meta.tags})}}sugList=hits.filter(x=>x.s>.45).sort((a,b)=>b.s-a.s).slice(0,8);sugI=0;
+  box.hidden=false;box.innerHTML=sugList.length?sugList.map((x,i)=>`<div data-i="${i}" class="${i?'':'on'}">📖 ${esc(x.b.name)} ${x.tag?`<span style="color:var(--muted)">· ${esc(x.tag)}</span>`:''} <small style="color:var(--muted)">→ p.${x.page||x.b.last||1}</small></div>`).join(''):'<div style="color:var(--muted)">No close match</div>'}
 $('#qj').oninput=suggest;
 $('#qj').onkeydown=e=>{
   if(e.key==='ArrowDown'||e.key==='ArrowUp'){e.preventDefault();sugI=(sugI+(e.key==='ArrowDown'?1:-1)+sugList.length)%(sugList.length||1);[...$('#sug').children].forEach((c,i)=>c.classList.toggle('on',i===sugI))}
@@ -464,62 +481,68 @@ let flipSoundFallback=false;
 pageFlipSound.addEventListener('error',()=>{if(!flipSoundFallback){flipSoundFallback=true;pageFlipSound.src='flip.mp3';pageFlipSound.load();}});
 function playPageFlipSound(){try{pageFlipSound.currentTime=0;pageFlipSound.play().catch(()=>{});}catch(error){}}
 
+const AUDIO_ICONS={"headphones": "<svg class=\"reader-icon\" aria-hidden=\"true\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\"><path d=\"M21,12.424V11A9,9,0,0,0,3,11v1.424A5,5,0,0,0,5,22a2,2,0,0,0,2-2V14a2,2,0,0,0-2-2V11a7,7,0,0,1,14,0v1a2,2,0,0,0-2,2v6a2,2,0,0,0,2,2,5,5,0,0,0,2-9.576ZM5,20H5a3,3,0,0,1,0-6Zm14,0V14a3,3,0,0,1,0,6Z\"/></svg>\n", "play": "<svg class=\"reader-icon\" aria-hidden=\"true\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\"><path d=\"M20.494,7.968l-9.54-7A5,5,0,0,0,3,5V19a5,5,0,0,0,7.957,4.031l9.54-7a5,5,0,0,0,0-8.064Zm-1.184,6.45-9.54,7A3,3,0,0,1,5,19V5A2.948,2.948,0,0,1,6.641,2.328,3.018,3.018,0,0,1,8.006,2a2.97,2.97,0,0,1,1.764.589l9.54,7a3,3,0,0,1,0,4.836Z\"/></svg>\n", "pause": "<svg class=\"reader-icon\" aria-hidden=\"true\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\"><path d=\"M6.5,0A3.5,3.5,0,0,0,3,3.5v17a3.5,3.5,0,0,0,7,0V3.5A3.5,3.5,0,0,0,6.5,0ZM8,20.5a1.5,1.5,0,0,1-3,0V3.5a1.5,1.5,0,0,1,3,0Z\"/><path d=\"M17.5,0A3.5,3.5,0,0,0,14,3.5v17a3.5,3.5,0,0,0,7,0V3.5A3.5,3.5,0,0,0,17.5,0ZM19,20.5a1.5,1.5,0,0,1-3,0V3.5a1.5,1.5,0,0,1,3,0Z\"/></svg>\n"};
 let B,pdf,N,maxS,s=0,busy=0,ret=[],cache=new Map(),audio=null;
 const L=$('#L'),R=$('#R'),book=$('#book');
 const pagesOf=k=>k===0?[0,1]:[2*k,2*k+1<=N?2*k+1:0];
 const spreadOf=p=>p<=1?0:Math.floor(p/2);
-async function img(n){if(n<1||n>N)return '';if(cache.has(n))return cache.get(n);
-  const p=await pdf.getPage(n),v0=p.getViewport({scale:1}),v=p.getViewport({scale:Math.min(1500/v0.height,3)}),c=document.createElement('canvas');
-  c.width=v.width;c.height=v.height;await p.render({canvasContext:c.getContext('2d'),viewport:v}).promise;
-  const u=c.toDataURL('image/jpeg',.88);cache.set(n,u);if(cache.size>24)cache.delete(cache.keys().next().value);return u}
+async function img(n){if(n<1||n>N||!pdf)return '';if(cache.has(n))return cache.get(n);const source=pdf;
+ const pending=(async()=>{const p=await source.getPage(n),v0=p.getViewport({scale:1}),v=p.getViewport({scale:Math.min(1500/v0.height,3)}),c=document.createElement('canvas');c.width=v.width;c.height=v.height;await p.render({canvasContext:c.getContext('2d'),viewport:v}).promise;return c.toDataURL('image/jpeg',.88)})();cache.set(n,pending);if(cache.size>24)cache.delete(cache.keys().next().value);try{return await pending}catch(error){if(cache.get(n)===pending)cache.delete(n);throw error}}
 const pic=u=>u?`<img src="${u}">`:'';
-function bad(n){const k=(B.links||{})[n];if(!k)return '';return `<div class="bd">${k.to?`<button data-j="${k.to}">↪ p.${k.to}</button>`:''}${audioTracks(k).length?`<button aria-label="Play page audio" data-a="${n}">♪</button>`:''}</div>`}
+function bad(n){const k=(B.links||{})[n];if(!k)return '';return `<div class="bd">${k.to?`<button data-j="${k.to}">↪ p.${k.to}</button>`:''}${audioTracks(k).length?`<button aria-label="Play page audio" data-a="${n}">${AUDIO_ICONS.headphones}</button>`:''}</div>`}
 function fill(el,n,src){el.classList.toggle('empty',!n);
   el.innerHTML=n?`<img src="${src}" draggable="false"><i class="pn">${n}</i>${bad(n)}<div class="cz"><div class="cc"><div class="cut"></div><div class="fold"></div></div></div>`:''}
 function shift(l,r){book.style.transform=`translateX(${l&&r?0:l?'25%':'-25%'})`;book.classList.toggle('single',!(l&&r))}
 function ui(){const [l,r]=pagesOf(s);$('#pn').value=l||r;$('#tot').textContent='/ '+N;$('#ret').hidden=!ret.length;book.classList.toggle('last',s===maxS);
-  B.last=l||r;saveBook(B);refreshAudioPlayer()}
+  const nextPage=l||r;if(B.last!==nextPage){B.last=nextPage;saveBook(B)}refreshAudioPlayer();refreshPageDetails()}
 async function setStatic(k){const [l,r]=pagesOf(k),[a,b]=await Promise.all([img(l),img(r)]);fill(L,l,a);fill(R,r,b);shift(l,r);ui();pre(k)}
-function pre(k){[k-1,k+1].forEach(x=>{if(x>=0&&x<=maxS)pagesOf(x).forEach(p=>p&&img(p))})}
+function pre(k){[k-1,k+1].forEach(x=>{if(x>=0&&x<=maxS)pagesOf(x).forEach(p=>p&&img(p).catch(()=>{}))})}
+let detailPage=1;
+function refreshPageDetails(preferred){if(!B)return;const pages=pagesOf(s).filter(Boolean);detailPage=pages.includes(preferred)?preferred:pages.includes(detailPage)?detailPage:pages[0];$('#detail-page').innerHTML=pages.map(p=>`<option value="${p}">${p}</option>`).join('');$('#detail-page').value=detailPage;const meta=B.pageMeta?.[detailPage]||{};$('#page-tags').value=meta.tags||'';$('#page-notes').value=meta.notes||'';$('#page-save-status').textContent='Saved automatically'}
+$('#detail-page').onchange=e=>refreshPageDetails(+e.target.value);
+async function savePageDetails(){if(!B)return;B.pageMeta=B.pageMeta||{};B.pageMeta[detailPage]={tags:$('#page-tags').value,notes:$('#page-notes').value};$('#page-save-status').textContent='Saving…';await saveBook(B);$('#page-save-status').textContent='Saved on device · autosave to Drive'}
+$('#page-tags').oninput=savePageDetails;$('#page-notes').oninput=savePageDetails;
+
 let audioRequest=0,audioRate=1;
 function audioTime(t){t=Number.isFinite(t)?Math.max(0,Math.floor(t)):0;return Math.floor(t/60)+':'+String(t%60).padStart(2,'0')}
-function updateAudioControls(){const a=audio,d=Number.isFinite(a?.duration)?a.duration:0;$('#audio-play').textContent=a&&!a.paused?'Ⅱ':'▶';$('#audio-play').setAttribute('aria-label',a&&!a.paused?'Pause audio':'Play audio');$('#audio-seek').max=d;$('#audio-seek').disabled=!d;$('#audio-seek').value=a?.currentTime||0;$('#audio-current').textContent=audioTime(a?.currentTime||0);$('#audio-duration').textContent=audioTime(d)}
+function updateAudioControls(){const a=audio,d=Number.isFinite(a?.duration)?a.duration:0;$('#audio-play').innerHTML=a&&!a.paused?AUDIO_ICONS.pause:AUDIO_ICONS.play;$('#audio-play').setAttribute('aria-label',a&&!a.paused?'Pause audio':'Play audio');$('#audio-seek').max=d;$('#audio-seek').disabled=!d;$('#audio-seek').value=a?.currentTime||0;$('#audio-current').textContent=audioTime(a?.currentTime||0);$('#audio-duration').textContent=audioTime(d)}
 function stopAudio(){audioRequest++;if(audio){audio.pause();URL.revokeObjectURL(audio.src);audio.removeAttribute('src');audio.load();audio=null}updateAudioControls()}
 function visibleAudioTracks(){return B?pagesOf(s).filter(Boolean).flatMap(page=>audioTracks(B.links?.[page]).map((track,index)=>({page,index,track}))):[]}
-function refreshAudioPlayer(){const available=visibleAudioTracks(),picker=$('#audio-track');$('#audio-dock').hidden=!available.length;picker.hidden=available.length<2;picker.innerHTML=available.map(({page,index})=>`<option value="${page}:${index}">Page ${page} · Audio ${index+1}</option>`).join('');if(!available.length){stopAudio();layout();return}const current=available.find(x=>String(x.page)===audio?._n&&x.track.audio===audio?._key);if(current)picker.value=current.page+':'+current.index;else{picker.value=available[0].page+':'+available[0].index;loadPageAudio(available[0].page,false,available[0].index)}layout()}
-async function loadPageAudio(n,autoplay,index=0){stopAudio();const request=audioRequest,owner=B,key=audioTracks(owner?.links?.[n])[index]?.audio;if(!key)return;$('#audio-track').value=n+':'+index;const bl=await dbGet('audio',key);if(request!==audioRequest||B!==owner)return;if(!bl)return toast('Audio file missing');const a=new Audio(URL.createObjectURL(bl));audio=a;a._n=String(n);a._key=key;a.preload='metadata';a.playbackRate=audioRate;['loadedmetadata','durationchange','timeupdate','play','pause','ended'].forEach(event=>a.addEventListener(event,()=>{if(audio===a)updateAudioControls()}));a.addEventListener('error',()=>{if(audio===a)toast('Could not play this audio file')});updateAudioControls();if(autoplay)a.play().catch(()=>toast('Tap Play to start audio'))}
-$('#audio-track').onchange=e=>{const [page,index]=e.target.value.split(':').map(Number);loadPageAudio(page,!!audio&&!audio.paused,index)};
+function refreshAudioPlayer(){const available=visibleAudioTracks(),picker=$('#audio-track');$('#audio-dock').hidden=!available.length;picker.hidden=available.length<2;picker.innerHTML=available.map(({page,index})=>`<option value="${page}:${index}">Page ${page} · Audio ${index+1}</option>`).join('');if(!available.length){stopAudio();layout();return}const current=available.find(x=>String(x.page)===audio?._n&&(x.track.audio||x.track.driveAudioId)===audio?._key);if(current)picker.value=current.page+':'+current.index;else{picker.value=available[0].page+':'+available[0].index;loadPageAudio(available[0].page,false,available[0].index).catch(error=>toast(error.message))}layout()}
+async function loadPageAudio(n,autoplay,index=0){stopAudio();const request=audioRequest,owner=B,track=audioTracks(owner?.links?.[n])[index],key=track?.audio||track?.driveAudioId;if(!key)return;$('#audio-track').value=n+':'+index;let bl=key&&await dbGet('audio',key);if(!bl){const track=audioTracks(owner?.links?.[n])[index];if(track?.driveAudioId){if(!gtok||Date.now()>=gexp)return toast('Reconnect Google to play Drive audio');bl=await(await gj(`${GA}/${track.driveAudioId}?alt=media`)).blob();}}if(request!==audioRequest||B!==owner)return;if(!bl)return toast('Audio file missing');const a=new Audio(URL.createObjectURL(bl));audio=a;a._n=String(n);a._key=key;a.preload='metadata';a.playbackRate=audioRate;['loadedmetadata','durationchange','timeupdate','play','pause','ended'].forEach(event=>a.addEventListener(event,()=>{if(audio===a)updateAudioControls()}));a.addEventListener('error',()=>{if(audio===a)toast('Could not play this audio file')});updateAudioControls();if(autoplay)a.play().catch(()=>toast('Tap Play to start audio'))}
+$('#audio-track').onchange=e=>{const [page,index]=e.target.value.split(':').map(Number);loadPageAudio(page,!!audio&&!audio.paused,index).catch(error=>toast(error.message))};
 $('#audio-play').onclick=()=>{if(!audio)return;if(audio.paused)audio.play().catch(()=>toast('Could not play this audio file'));else audio.pause()};
 $('#audio-seek').oninput=e=>{if(audio&&Number.isFinite(audio.duration)){audio.currentTime=Math.min(audio.duration,+e.target.value);updateAudioControls()}};
 $('#audio-speed').onclick=()=>{audioRate=audioRate===1?2:1;if(audio)audio.playbackRate=audioRate;$('#audio-speed').textContent=audioRate+'×';$('#audio-speed').setAttribute('aria-label','Playback speed: '+audioRate+' times')};
 async function go(ns){
   ns=Math.max(0,Math.min(maxS,ns));if(busy||ns===s||!B)return;busy=1;stopAudio();
-  const [ol,or]=pagesOf(s),[nl,nr]=pagesOf(ns),[iol,ior,inl,inr]=await Promise.all([ol,or,nl,nr].map(img)),fwd=ns>s;
+  try{const [ol,or]=pagesOf(s),[nl,nr]=pagesOf(ns),[iol,ior,inl,inr]=await Promise.all([ol,or,nl,nr].map(img)),fwd=ns>s;
   const f=document.createElement('div');f.className='flip '+(fwd?'f':'b');
   f.innerHTML=`<div class="face">${pic(fwd?ior:iol)}</div><div class="face bk">${pic(fwd?inl:inr)}</div>`;
   if(fwd)fill(R,nr,inr);else fill(L,nl,inl);
   book.append(f);shift(nl,nr);f.offsetWidth;playPageFlipSound();f.classList.add('go');
-  setTimeout(()=>{f.remove();fill(L,nl,inl);fill(R,nr,inr);s=ns;busy=0;ui();pre(ns)},880);
+  setTimeout(()=>{f.remove();fill(L,nl,inl);fill(R,nr,inr);s=ns;busy=0;ui();pre(ns)},410);
+  }catch(error){busy=0;toast('Could not load page: '+error.message);refreshAudioPlayer()}
 }
 function layout(){const st=$('#stage');if(!B)return;const aw=st.clientWidth*.94,ah=st.clientHeight*.94,ph=Math.min(ah,aw/(2*B.aspect));
   book.style.setProperty('--ph',ph+'px');book.style.setProperty('--pw',ph*B.aspect+'px')}
 addEventListener('resize',layout);
 async function openBook(id,page){
   B=vis().find(b=>b.id===id);if(!B)return;B.links=B.links||{};
-  try{const f=await dbGet('files',id);pdf=await pdfjsLib.getDocument({data:await f.arrayBuffer()}).promise}catch(e){toast('Could not open this book');return}
+  try{const f=await dbGet('files',id);if(f)pdf=await pdfjsLib.getDocument({data:await f.arrayBuffer()}).promise;else{if(!B.driveId)throw new Error('PDF missing');if(!gtok||Date.now()>=gexp)throw new Error('Reconnect Google to open this Drive PDF');const meta=await(await gj(`${GA}/${B.driveId}?fields=id,mimeType`)).json();if(meta.mimeType.startsWith('application/vnd.google-apps.')){const blob=await downloadBook(meta);pdf=await pdfjsLib.getDocument({data:await blob.arrayBuffer()}).promise;}else pdf=await pdfjsLib.getDocument({url:`${GA}/${B.driveId}?alt=media&supportsAllDrives=true`,httpHeaders:{Authorization:'Bearer '+gtok},disableAutoFetch:true,disableStream:true,rangeChunkSize:262144}).promise;}const first=await pdf.getPage(1),v=first.getViewport({scale:1});B.aspect=v.width/v.height;B.pages=pdf.numPages;}catch(e){toast(e.message||'Could not open this book');B=null;return}
   N=pdf.numPages;maxS=Math.floor(N/2);cache.clear();ret=[];busy=0;stopAudio();
   $('#ttl').textContent=B.name;$('#pn').max=N;$('#lib').classList.remove('show');$('#rdr').classList.add('show');layout();
-  s=spreadOf(Math.min(Math.max(page||B.last||1,1),N));book.style.transition='none';await setStatic(s);book.offsetWidth;book.style.transition='';
+  s=spreadOf(Math.min(Math.max(page||B.last||1,1),N));book.style.transition='none';await setStatic(s);refreshPageDetails(page);if(!B.thumb){const owner=B;img(1).then(async src=>{if(!src)return;const image=new Image();image.onload=async()=>{const c=document.createElement('canvas');c.height=300;c.width=Math.round(300*owner.aspect);c.getContext('2d').drawImage(image,0,0,c.width,c.height);owner.thumb=c.toDataURL('image/jpeg',.75);await dbPut('books',owner.id,owner)};image.src=src}).catch(()=>{})}book.offsetWidth;book.style.transition='';
 }
-function closeBook(){stopAudio();if(B){saveBook(B)}B=null;pdf=null;$('#audio-dock').hidden=true;$('#rdr').classList.remove('show');$('#lib').classList.add('show');renderLib()}
+function closeBook(){stopAudio();if(B){saveBook(B)}B=null;if(pdf)pdf.destroy().catch(()=>{});pdf=null;$('#audio-dock').hidden=true;$('#rdr').classList.remove('show');$('#lib').classList.add('show');renderLib()}
 $('#back').onclick=closeBook;
 $('#next').onclick=()=>go(s+1);$('#prev').onclick=()=>go(s-1);
 $('#pn').onkeydown=e=>{if(e.key==='Enter'){const p=Math.min(Math.max(+e.target.value||1,1),N);go(spreadOf(p));e.target.blur()}};
 $('#ret').onclick=()=>{const k=ret.pop();go(k)};
 book.onclick=e=>{
   const j=e.target.closest('[data-j]'),a=e.target.closest('[data-a]');
-  if(j){ret.push(s);go(spreadOf(+j.dataset.j));setTimeout(ui,900);return}
-  if(a){toggleAudio(a.dataset.a);return}
+  if(j){ret.push(s);go(spreadOf(+j.dataset.j));return}
+  if(a){toggleAudio(a.dataset.a).catch(error=>toast(error.message));return}
   if(e.target.closest('.pg.r'))go(s+1);else if(e.target.closest('.pg.l'))go(s-1)};
 async function toggleAudio(n){if(audio&&audio._n===String(n)){$('#audio-play').click();return}await loadPageAudio(n,true)}
 addEventListener('keydown',e=>{if(!B||document.querySelector('.mdl')||e.target.matches('input,select,textarea'))return;
