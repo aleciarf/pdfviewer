@@ -99,6 +99,7 @@ input,select,textarea{background:var(--panel);border:1px solid var(--line);borde
 .drawing-section{padding:16px 0;border-top:1px solid var(--line)}.drawing-row{display:flex;align-items:center;gap:12px}.drawing-pencil{width:21px;height:21px;display:block}:root[data-theme=dark] .drawing-pencil{filter:invert(1)}#drawing-toggle{position:relative;width:74px;height:34px;min-height:34px;flex:none;border:0;border-radius:20px;background:var(--line);padding:0;font-size:11px;letter-spacing:.02em;color:var(--ink);touch-action:pan-y}#drawing-toggle .drawing-on,#drawing-toggle .drawing-off{position:absolute;top:10px}#drawing-toggle .drawing-on{left:10px;visibility:hidden}#drawing-toggle .drawing-off{right:8px}#drawing-toggle .drawing-thumb{position:absolute;top:4px;left:4px;width:26px;height:26px;border-radius:50%;background:#fff;box-shadow:0 1px 3px #0002;transition:transform .18s}#drawing-toggle[aria-checked=true]{background:var(--accent);color:#fff}#drawing-toggle[aria-checked=true] .drawing-thumb{transform:translateX(40px)}#drawing-toggle[aria-checked=true] .drawing-on{visibility:visible}#drawing-toggle[aria-checked=true] .drawing-off{visibility:hidden}#drawing-undo{margin-left:auto;border:0;background:var(--bg);width:34px;height:34px;padding:3px;font-size:21px;line-height:1}.drawing-colors{display:flex;gap:14px;margin-top:14px}.drawing-colors button{width:24px;height:24px;padding:0;border:3px solid var(--panel);border-radius:50%;background:var(--pen);outline:1px solid var(--line)}.drawing-colors button[aria-pressed=true]{outline:2px solid var(--accent);outline-offset:2px}.page-drawing{position:absolute;inset:0;width:100%;height:100%;z-index:7;pointer-events:none;visibility:hidden}.draw-on .page-drawing{pointer-events:auto;visibility:visible;touch-action:none;cursor:crosshair}.draw-on .cz{pointer-events:none}.draw-on .pg{cursor:crosshair}.face .drawing-snapshot{position:absolute;inset:0;pointer-events:none}@media(max-width:760px){.drawing-section{min-width:140px;flex:0 0 140px;padding:10px 0}.drawing-row{gap:8px}#drawing-undo{margin-left:0}}@media(max-width:480px){.drawing-section{min-width:0;flex:none;padding:14px 0}.drawing-row{gap:12px}#drawing-undo{margin-left:auto}}@media(prefers-reduced-motion:reduce){#drawing-toggle .drawing-thumb{transition:none}}
 
 #drawing-pencil-button{display:grid;place-items:center;width:34px;height:34px;border:1px solid transparent;border-radius:9px;background:transparent;padding:6px}#drawing-pencil-button[aria-pressed=true]{border-color:var(--accent);background:var(--bg)}#drawing-eraser{border:2px solid #555;outline:0;background:#fff}#drawing-eraser[aria-pressed=true]{outline:2px solid var(--accent);outline-offset:2px}.draw-visible .page-drawing{visibility:visible}.draw-on .page-drawing{pointer-events:auto}.rdr:not(.draw-visible) .page-drawing{visibility:hidden;pointer-events:none}
+.flip.single-slide-flip.f,.flip.single-slide-flip.b{left:50%;transform-origin:center center}.single-slide-flip .face:after{background:linear-gradient(90deg,#0000,#0002)}
 </style>
 </head>
 <body>
@@ -217,7 +218,37 @@ $('#nf').onclick=()=>{if(accountLock())return;
   inp.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();ok()}else if(e.key==='Escape')m.remove()};
   inp.focus();setTimeout(()=>inp.focus(),60);
 };
-$('#imp').onclick=()=>$('#file').click();
+function parseGoogleLink(value){
+ let url;try{url=new URL(value.trim())}catch{throw Error('Paste a complete Google Slides or Google Docs link.');}
+ if(url.protocol!=='https:'||url.hostname!=='docs.google.com')throw Error('Use a docs.google.com Slides or Docs link.');
+ const match=url.pathname.match(/^\/(presentation|document)\/(?:u\/\d+\/)?d\/([A-Za-z0-9_-]+)(?:\/|$)/);
+ if(!match||match[2]==='e')throw Error('Use the original document link, not a published or embedded link.');
+ return {id:match[2],kind:match[1]==='presentation'?'slides':'docs',url:'https://docs.google.com/'+match[1]+'/d/'+match[2]+'/edit'};
+}
+function importMenu(){
+ const m=modal('<h3>Import</h3><div class="row"><button id="import-pdf" class="pri">PDF files</button><button id="import-google">Google Slides / Docs link</button></div><button id="import-close">Cancel</button>');
+ $('#import-pdf',m).onclick=()=>{m.remove();$('#file').click();};$('#import-close',m).onclick=()=>m.remove();$('#import-google',m).onclick=()=>{m.remove();googleLinkDialog();};
+}
+function googleLinkDialog(){
+ const m=modal('<h3>Import Google Slides or Docs</h3><label>Document link<input id="google-link" type="url" placeholder="https://docs.google.com/…" autocomplete="off"></label><p>Slides: one slide per view. Docs: two pages per view. Opens the latest printable version from Google Drive.</p><p id="google-import-error" role="status"></p><div class="row"><button id="google-import-cancel">Cancel</button><button id="google-import-add" class="pri">Import link</button></div>');
+ const input=$('#google-link',m),button=$('#google-import-add',m),errorLabel=$('#google-import-error',m);$('#google-import-cancel',m).onclick=()=>m.remove();input.focus();
+ button.onclick=async()=>{let link;try{link=parseGoogleLink(input.value)}catch(error){errorLabel.textContent=error.message;return;}button.disabled=true;
+ try{await importGoogleLink(link);m.remove();}catch(error){errorLabel.textContent=error.message;button.disabled=false;}};
+}
+async function importGoogleLink(link){
+ if(accountLock())throw Error('Wait for the current sync to finish.');
+ const targetFolder=$('#impf').value;
+ await signIn(true,true);accountBusy=true;acct();
+ try{
+  const meta=await(await gj(`${GA}/${link.id}?fields=id,name,mimeType`)).json();
+  const kind=meta.mimeType==='application/vnd.google-apps.presentation'?'slides':meta.mimeType==='application/vnd.google-apps.document'?'docs':null;
+  if(!kind)throw Error('This link must point to a Google Slides presentation or Google Doc.');
+  if(books.some(b=>b.driveId===meta.id)){toast('This document is already in your library.');return;}
+  const blob=await downloadBook(meta),record=await preparePdf(blob,meta.name,targetFolder,{driveId:meta.id,mimeType:meta.mimeType,sourceType:kind,sourceUrl:link.url,owner:user.email,src:'mine'});
+  await dbPut('books',record.id,record);books.push(record);renderLib();toast(kind==='slides'?'Slides imported':'Google Doc imported');
+ }finally{accountBusy=false;acct();scheduleCloud();}
+}
+$('#imp').onclick=importMenu;
 async function preparePdf(f,name,folder,extra){
  const doc=await pdfjsLib.getDocument({data:await f.arrayBuffer()}).promise;
  try{const page=await doc.getPage(1),v0=page.getViewport({scale:1}),v=page.getViewport({scale:420/v0.height});
@@ -635,14 +666,16 @@ const AUDIO_ICONS={"headphones": "<svg class=\"reader-icon\" aria-hidden=\"true\
 let linkHistory=[];
 let B,pdf,N,maxS,s=0,busy=0,ret=[],cache=new Map(),audio=null;
 const L=$('#L'),R=$('#R'),book=$('#book');
-const pagesOf=k=>k===0?[0,1]:[2*k,2*k+1<=N?2*k+1:0];
-const spreadOf=p=>p<=1?0:Math.floor(p/2);
+const singleSlide=()=>B?.sourceType==='slides'||B?.mimeType==='application/vnd.google-apps.presentation';
+const pagedDoc=()=>B?.sourceType==='docs'||B?.mimeType==='application/vnd.google-apps.document';
+const pagesOf=k=>singleSlide()?[0,k+1]:pagedDoc()?[2*k+1,2*k+2<=N?2*k+2:0]:k===0?[0,1]:[2*k,2*k+1<=N?2*k+1:0];
+const spreadOf=p=>singleSlide()?Math.max(0,p-1):pagedDoc()?Math.max(0,Math.floor((p-1)/2)):p<=1?0:Math.floor(p/2);
 async function img(n){if(n<1||n>N||!pdf)return '';if(cache.has(n))return cache.get(n);const source=pdf;
  const pending=(async()=>{const p=await source.getPage(n),v0=p.getViewport({scale:1}),v=p.getViewport({scale:Math.min(1500/v0.height,3)}),c=document.createElement('canvas');c.width=v.width;c.height=v.height;await p.render({canvasContext:c.getContext('2d'),viewport:v}).promise;return c.toDataURL('image/jpeg',.88)})();cache.set(n,pending);if(cache.size>24)cache.delete(cache.keys().next().value);try{return await pending}catch(error){if(cache.get(n)===pending)cache.delete(n);throw error}}
 const pic=u=>u?`<img src="${u}">`:'';
 function linkDestination(link){if(!link?.toBookId&&!link?.toDriveId)return B;return vis().find(b=>(link.toDriveId&&b.driveId===link.toDriveId)||b.id===link.toBookId)}
 function bad(n){const k=(B.links||{})[n];if(!k)return '';const target=linkDestination(k),external=!!(k.toBookId||k.toDriveId);return `<div class="bd">${k.to?`<button data-j="${n}" title="${esc(external?(target?.name||'Linked book')+' · page '+k.to:'Page '+k.to)}">↪ ${external?esc(target?.name||'Linked book')+' · ':''}p.${k.to}</button>`:''}${audioTracks(k).length?`<button aria-label="Play page audio" data-a="${n}">${AUDIO_ICONS.headphones}</button>`:''}</div>`}
-async function followPageLink(page){if(busy||!B)return;const link=B.links?.[page];if(!link?.to)return;const destination=linkDestination(link);if(!destination)return toast('The linked PDF is not in your library. Import it or reconnect Drive first.');if(destination.id===B.id){ret.push(s);await go(spreadOf(Math.min(link.to,N)));return}linkHistory.push({bookId:B.id,driveId:B.driveId,page:Math.max(1,2*s)});await saveBook(B);stopAudio();await openBook(destination.id,link.to)}
+async function followPageLink(page){if(busy||!B)return;const link=B.links?.[page];if(!link?.to)return;const destination=linkDestination(link);if(!destination)return toast('The linked PDF is not in your library. Import it or reconnect Drive first.');if(destination.id===B.id){ret.push(s);await go(spreadOf(Math.min(link.to,N)));return}linkHistory.push({bookId:B.id,driveId:B.driveId,page:pagesOf(s).find(Boolean)||1});await saveBook(B);stopAudio();await openBook(destination.id,link.to)}
 function fill(el,n,src){el.classList.toggle('empty',!n);
   el.innerHTML=n?`<img src="${src}" draggable="false"><i class="pn">${n}</i>${bad(n)}<canvas class="page-drawing" aria-label="Draw notes on page ${n}" data-page="${n}"></canvas><div class="cz"><div class="cc"><div class="cut"></div><div class="fold"></div></div></div>`:'';if(n)attachDrawingCanvas(el.querySelector('.page-drawing'),n)}
 function shift(l,r){book.style.transform=`translateX(${l&&r?0:l?'25%':'-25%'})`;book.classList.toggle('single',!(l&&r))}
@@ -670,14 +703,14 @@ async function go(ns,fast=false){
   finishActiveDrawing();
   ns=Math.max(0,Math.min(maxS,ns));if(busy||ns===s||!B)return;busy=1;stopAudio();const owner=B;
   try{const [ol,or]=pagesOf(s),[nl,nr]=pagesOf(ns),[iol,ior,inl,inr]=await Promise.all([ol,or,nl,nr].map(img)),fwd=ns>s;if(B!==owner){busy=0;return}
-  const f=document.createElement('div');f.className='flip '+(fwd?'f':'b');if(fast){f.style.transitionDuration='.09s';book.style.transitionDuration='.09s'}
-  f.innerHTML=`<div class="face">${pic(fwd?ior:iol)}${drawingFace(fwd?or:ol)}</div><div class="face bk">${pic(fwd?inl:inr)}${drawingFace(fwd?nl:nr)}</div>`;
-  if(fwd)fill(R,nr,inr);else fill(L,nl,inl);
+  const f=document.createElement('div');f.className='flip '+(fwd?'f':'b')+(singleSlide()?' single-slide-flip':'');if(fast){f.style.transitionDuration='.09s';book.style.transitionDuration='.09s'}
+  f.innerHTML=`<div class="face">${pic(singleSlide()?ior:fwd?ior:iol)}${drawingFace(singleSlide()?or:fwd?or:ol)}</div><div class="face bk">${pic(singleSlide()?inr:fwd?inl:inr)}${drawingFace(singleSlide()?nr:fwd?nl:nr)}</div>`;
+  if(singleSlide()||fwd)fill(R,nr,inr);else fill(L,nl,inl);
   book.append(f);shift(nl,nr);f.offsetWidth;playPageFlipSound();f.classList.add('go');
   await new Promise(resolve=>setTimeout(resolve,fast?110:410));f.remove();if(B!==owner){busy=0;book.style.transitionDuration='';return}fill(L,nl,inl);fill(R,nr,inr);s=ns;busy=0;book.style.transitionDuration='';ui();pre(ns);
   }catch(error){busy=0;toast('Could not load page: '+error.message);refreshAudioPlayer()}
 }
-function layout(){const st=$('#stage');if(!B)return;const aw=st.clientWidth*.94,ah=st.clientHeight*.94,ph=Math.min(ah,aw/(2*B.aspect));
+function layout(){const st=$('#stage');if(!B)return;const aw=st.clientWidth*.94,ah=st.clientHeight*.94,ph=Math.min(ah,aw/((singleSlide()?1:2)*B.aspect));
   book.style.setProperty('--ph',ph+'px');book.style.setProperty('--pw',ph*B.aspect+'px');requestAnimationFrame(paintAllDrawings)}
 addEventListener('resize',layout);
 let bookOpenGeneration=0,pendingBookTask=null;
@@ -694,7 +727,7 @@ async function openBook(id,page){
   else{
    if(!selected.driveId)throw new Error('PDF missing');
    if(!gtok||Date.now()>=gexp)await renewGoogle();if(!current())return;
-   const meta=await(await gj(`${GA}/${selected.driveId}?fields=id,mimeType`)).json();if(!current())return;
+   const meta=await(await gj(`${GA}/${selected.driveId}?fields=id,mimeType`)).json();if(!current())return;B.mimeType=meta.mimeType;
    if(meta.mimeType.startsWith('application/vnd.google-apps.')){const blob=await downloadBook(meta);source={data:await blob.arrayBuffer()};if(!current())return;}
    else source={url:`${GA}/${selected.driveId}?alt=media&supportsAllDrives=true`,httpHeaders:{Authorization:'Bearer '+gtok},disableAutoFetch:true,disableStream:true,rangeChunkSize:262144};
   }
@@ -704,7 +737,7 @@ async function openBook(id,page){
   if(!current()){await documentPdf.destroy();return;}
   // Sync may replace the book object while loading; update the current record only.
   B.aspect=v.width/v.height;B.pages=documentPdf.numPages;pdf=documentPdf;
-  N=pdf.numPages;maxS=Math.floor(N/2);cache.clear();ret=[];busy=0;
+  N=pdf.numPages;maxS=singleSlide()?N-1:pagedDoc()?Math.ceil(N/2)-1:Math.floor(N/2);cache.clear();ret=[];busy=0;
   $('#ttl').textContent=B.name;$('#pn').max=N;$('#lib').classList.remove('show');$('#rdr').classList.add('show');layout();
   s=spreadOf(Math.min(Math.max(page||B.last||1,1),N));book.style.transition='none';await setStatic(s);if(!current())return;
   refreshPageDetails(page);
